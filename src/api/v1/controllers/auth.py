@@ -1,0 +1,1 @@
+@router.post('/login', response_model=TokenResponse, summary='User login', description='Authenticate a user and return a token.', responses={400: {'description': 'Invalid input'}, 401: {'description': 'Invalid credentials'}})
