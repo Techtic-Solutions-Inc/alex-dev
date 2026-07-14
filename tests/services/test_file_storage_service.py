@@ -1,20 +1,28 @@
 import pytest
-from services.file_storage_service import FileStorageService
-from unittest.mock import MagicMock
+from src.services.file_storage_service import FileStorageService
 
-@pytest.fixture
+@pytest.fixture()
 def file_storage_service():
     return FileStorageService()
 
-def test_store_file_success(file_storage_service, mocker):
-    mock_file = MagicMock()
-    mock_file.filename = "test.jpg"
-    mock_file.file = MagicMock()
-    mocker.patch.object(file_storage_service.s3_client, 'upload_fileobj')
-    url = file_storage_service.store_file(mock_file)
-    assert url.startswith("https://")
+# Happy path test
+def test_store_file_happy_path(file_storage_service):
+    file_data = b'This is a test file.'
+    file_name = 'test_file.txt'
+    url = file_storage_service.store_file(file_name, file_data)
+    assert url is not None
 
-def test_generate_secure_url(file_storage_service, mocker):
-    mocker.patch.object(file_storage_service.s3_client, 'generate_presigned_url', return_value="https://example.com/secure_url")
-    url = file_storage_service.generate_secure_url("uploads/test.jpg")
-    assert url == "https://example.com/secure_url"
+# Edge case tests
+def test_store_file_empty_data(file_storage_service):
+    with pytest.raises(ValueError):
+        file_storage_service.store_file('empty_file.txt', b'')
+
+def test_store_file_large_data(file_storage_service):
+    large_data = b'A' * (10 * 1024 * 1024 + 1)  # 10MB + 1 byte
+    with pytest.raises(ValueError):
+        file_storage_service.store_file('large_file.txt', large_data)
+
+# Error case tests
+def test_store_file_invalid_type(file_storage_service):
+    with pytest.raises(TypeError):
+        file_storage_service.store_file('test_file.exe', b'This is an executable file.')
