@@ -1,12 +1,1 @@
-from fastapi import APIRouter, Depends
-from src.api.v1.services.auth_service import AuthService
-from src.api.v1.schemas.auth import LoginRequest, TokenResponse
-
-router = APIRouter()
-
-def get_auth_service():
-    return AuthService()
-
-@router.post('/login', response_model=TokenResponse)
-async def login(request: LoginRequest, auth_service: AuthService = Depends(get_auth_service)):
-    return await auth_service.login(request)
+@router.post('/login', response_model=TokenResponse, summary='User login', description='Authenticate a user and return a token.', responses={400: {'description': 'Invalid input'}, 401: {'description': 'Invalid credentials'}})
