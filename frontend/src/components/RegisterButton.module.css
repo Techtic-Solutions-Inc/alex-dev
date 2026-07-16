@@ -1,0 +1,21 @@
+.button {
+  width: 100%;
+  padding: var(--padding-10) var(--padding-20);
+  border: none;
+  border-radius: 8px;
+  background-color: var(--primary);
+  color: var(--surface);
+  font-size: var(--body-font-size);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.button:hover:not(:disabled) {
+  background-color: color-mix(in srgb, var(--primary) 85%, var(--text-primary));
+}
+
+.button:disabled {
+  background-color: var(--secondary);
+  cursor: not-allowed;
+}

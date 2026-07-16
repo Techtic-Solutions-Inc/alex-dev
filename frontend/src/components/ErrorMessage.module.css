@@ -1,0 +1,10 @@
+.errorMessage {
+  margin: 0;
+  padding: var(--padding-10);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background-color: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  color: var(--accent);
+  font-size: 14px;
+  line-height: var(--body-line-height);
+}
