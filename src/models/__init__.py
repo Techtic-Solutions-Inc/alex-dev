@@ -1,2 +1,3 @@
-# Register new models for file storage if necessary.
-# Currently, no new models are required for file storage.
+from src.models.base import Base
+
+__all__ = ['Base']

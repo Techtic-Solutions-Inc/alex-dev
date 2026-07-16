@@ -1,0 +1,8 @@
+#!/workspaces/bce2a39a-8c9d-419c-a78f-b05999b59560/worktrees/4f0aa3ef-365c-46ed-a053-72e395190a54/.venv/bin/python3
+# -*- coding: utf-8 -*-
+import re
+import sys
+from cffi._cffi_gen_src import run
+if __name__ == '__main__':
+    sys.argv[0] = re.sub(r'(-script\.pyw|\.exe)?$', '', sys.argv[0])
+    sys.exit(run())
