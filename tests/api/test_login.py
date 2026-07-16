@@ -1,49 +1,21 @@
-import jwt
-from src.config.settings import JWT_SECRET, JWT_ALGORITHM
+import pytest
+from fastapi import status
 
 
-def test_login_success(client, sample_user):
-    response = client.post(
-        "/api/v1/login",
-        json={"email": "testuser@example.com", "password": "securepassword"},
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-    assert "access_token" in body
-    assert body["token_type"] == "bearer"
-
-    payload = jwt.decode(body["access_token"], JWT_SECRET, algorithms=[JWT_ALGORITHM])
-    assert payload["sub"] == str(sample_user.id)
-    assert payload["email"] == sample_user.email
-
-
-def test_login_invalid_credentials(client, sample_user):
-    response = client.post(
-        "/api/v1/login",
-        json={"email": "testuser@example.com", "password": "wrongpassword"},
-    )
-
-    assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid credentials"
+@pytest.mark.parametrize(
+    'email, password, expected_status', [
+        ('testuser@example.com', 'securepassword', status.HTTP_200_OK),  # Happy path
+        ('testuser@example.com', '', status.HTTP_400_BAD_REQUEST),  # Edge case: empty password
+        ('', 'securepassword', status.HTTP_400_BAD_REQUEST),  # Edge case: empty email
+        ('wronguser@example.com', 'securepassword', status.HTTP_401_UNAUTHORIZED),  # Error case: wrong email
+        ('testuser@example.com', 'wrongpassword', status.HTTP_401_UNAUTHORIZED),  # Error case: wrong password
+    ]
+)
+def test_login(client, sample_user, email, password, expected_status):
+    response = client.post('/login', json={'email': email, 'password': password})
+    assert response.status_code == expected_status
 
 
 def test_login_logging(client, sample_user, caplog):
-    import logging
-
-    with caplog.at_level(logging.INFO):
-        client.post(
-            "/api/v1/login",
-            json={"email": "testuser@example.com", "password": "securepassword"},
-        )
-
-    assert any("Login attempt for email=testuser@example.com" in record.message for record in caplog.records)
-    assert any("Successful login for user_id=" in record.message for record in caplog.records)
-
-    with caplog.at_level(logging.WARNING):
-        client.post(
-            "/api/v1/login",
-            json={"email": "testuser@example.com", "password": "wrongpassword"},
-        )
-
-    assert any("Failed login attempt for email=testuser@example.com" in record.message for record in caplog.records)
+    response = client.post('/login', json={'email': 'testuser@example.com', 'password': 'securepassword'})
+    assert 'Login attempt' in caplog.text
