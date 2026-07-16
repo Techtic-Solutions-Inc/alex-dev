@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.database import Base, get_db
+from src.database import Base
 from src.main import app
 
 DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/test_db'
