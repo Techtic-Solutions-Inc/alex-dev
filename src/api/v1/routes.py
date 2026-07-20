@@ -1,6 +1,8 @@
 from fastapi import APIRouter
-from src.api.v1.controllers.register_controller import router as register_router
 
-router = APIRouter()
+# Assuming api_router should be defined here
+api_router = APIRouter()
 
-router.include_router(register_router, prefix="/api/v1")
+# Example route registration
+# from .controllers import some_controller
+# api_router.include_router(some_controller.router, prefix='/some-path', tags=['some-tag'])
