@@ -2,7 +2,6 @@
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.config.settings import settings
 from src.main import app
 from fastapi.testclient import TestClient
 
