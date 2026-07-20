@@ -1,16 +1,14 @@
 import logging
 
 import jwt
-import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
 
 from src.config.settings import settings
 from src.db.session import check_database_connection, engine
 from src.middlewares.auth import JWTAuthMiddleware
 from src.models.user import User
 from src.utils.logging_config import configure_logging
-from src.utils.security import create_access_token, hash_password
+from src.utils.security import create_access_token
 
 
 def test_database_connection() -> None:
