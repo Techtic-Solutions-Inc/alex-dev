@@ -1,11 +1,20 @@
 from fastapi import APIRouter, HTTPException, status
-from src.api.v1.schemas.register_schema import UserCreate, UserResponse
+from src.api/v1.schemas.register_schema import UserCreate, UserResponse
 from src.services.user_service import create_user
 from src.utils.email import send_confirmation_email
 
 router = APIRouter()
 
-@router.post("/auth/register", response_model=UserResponse)
+@router.post(
+    "/auth/register",
+    response_model=UserResponse,
+    responses={
+        401: {"description": "Unauthorized - Missing or invalid token"},
+        422: {"description": "Unprocessable Entity - Validation error"}
+    },
+    summary="Register a new user",
+    description="Endpoint to register a new user with email and password. Sends a confirmation email upon successful registration."
+)
 async def register_user(user: UserCreate):
     """
     Register a new user.
