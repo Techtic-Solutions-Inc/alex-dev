@@ -1,4 +1,3 @@
-"""Pytest configuration and shared fixtures."""
 
 import os
 from collections.abc import Generator
@@ -11,15 +10,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from src.config.database import Base, get_db
-from src.config.settings import get_settings
 from src.main import app
 
 TEST_DATABASE_URL = "sqlite://"
 
-
 @pytest.fixture
 def db_session() -> Generator[Session, None, None]:
-    """Provide an isolated in-memory database session for tests."""
     engine = create_engine(
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False},
@@ -35,11 +31,8 @@ def db_session() -> Generator[Session, None, None]:
         session.close()
         Base.metadata.drop_all(bind=engine)
 
-
 @pytest.fixture
 def client(db_session: Session) -> Generator[TestClient, None, None]:
-    """Provide a FastAPI test client with overridden database dependency."""
-
     def override_get_db() -> Generator[Session, None, None]:
         try:
             yield db_session
@@ -53,21 +46,12 @@ def client(db_session: Session) -> Generator[TestClient, None, None]:
 
     app.dependency_overrides.clear()
 
-
 @pytest.fixture
 def mock_sendgrid() -> Generator[MagicMock, None, None]:
-    """Mock SendGrid client so tests do not call the external API."""
     env = {
         "SENDGRID_API_KEY": "test-sendgrid-key",
         "SENDGRID_FROM_EMAIL": "test@example.com",
     }
     with patch.dict(os.environ, env, clear=False):
-        get_settings.cache_clear()
-        with patch("src.services.email_service.SendGridAPIClient") as mock_client_cls:
-            mock_client = MagicMock()
-            mock_response = MagicMock()
-            mock_response.status_code = 202
-            mock_client.send.return_value = mock_response
-            mock_client_cls.return_value = mock_client
-            yield mock_client
-        get_settings.cache_clear()
+        with patch("src.utils.email.send_confirmation_email") as mock_send_email:
+            yield mock_send_email
