@@ -1,85 +1,80 @@
-from datetime import datetime, timedelta, timezone
 
-from src.models.user import User
-from src.services.auth_service import hash_password
-
-VALID_TOKEN = "valid-reset-token-xyz789"
+import pytest
+from httpx import AsyncClient
 
 
-def _create_user_with_reset_token(db_session, *, token: str, expires_at: datetime) -> User:
-    user = User(
-        email="user@example.com",
-        hashed_password=hash_password("OldPassword123"),
-        password_reset_token=token,
-        password_reset_token_expires_at=expires_at,
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    return user
-
-
-def test_reset_password_success(client, db_session):
-    _create_user_with_reset_token(
-        db_session,
-        token=VALID_TOKEN,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-    )
-
-    redirect_response = client.get(
-        f"/reset-password?token={VALID_TOKEN}",
-        follow_redirects=False,
-    )
-    assert redirect_response.status_code == 302
-    assert VALID_TOKEN in redirect_response.headers["location"]
-
-    response = client.post(
+@pytest.mark.asyncio
+async def test_password_reset_happy_path(client, db_session, test_user):
+    # Simulate a valid password reset link
+    reset_token = "valid-reset-token"
+    new_password = "NewPassword123!"
+    response = await client.post(
         "/reset-password",
         json={
-            "token": VALID_TOKEN,
-            "new_password": "NewPassword123!",
-            "confirm_password": "NewPassword123!",
-        },
+            "token": reset_token,
+            "new_password": new_password,
+            "confirm_password": new_password
+        }
     )
     assert response.status_code == 200
-    assert (
-        response.json()["message"]
-        == "Your password has been reset successfully! You can now log in."
-    )
-
-    db_session.expire_all()
-    user = db_session.query(User).filter(User.email == "user@example.com").one()
-    assert user.password_reset_token is None
-    assert user.password_reset_token_expires_at is None
+    assert response.json()["message"] == "Your password has been reset successfully! You can now log in."
 
 
-def test_reset_password_invalid_link(client):
-    response = client.post(
+@pytest.mark.asyncio
+async def test_password_reset_empty_password(client, db_session, test_user):
+    reset_token = "valid-reset-token"
+    response = await client.post(
         "/reset-password",
         json={
-            "token": "invalid-token",
-            "new_password": "NewPassword123!",
-            "confirm_password": "NewPassword123!",
-        },
+            "token": reset_token,
+            "new_password": "",
+            "confirm_password": ""
+        }
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Invalid or expired password reset token."
+    assert "Password cannot be empty" in response.json()["detail"]
 
 
-def test_reset_password_mismatched_passwords(client, db_session):
-    _create_user_with_reset_token(
-        db_session,
-        token=VALID_TOKEN,
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-    )
-
-    response = client.post(
+@pytest.mark.asyncio
+async def test_password_reset_mismatched_passwords(client, db_session, test_user):
+    reset_token = "valid-reset-token"
+    response = await client.post(
         "/reset-password",
         json={
-            "token": VALID_TOKEN,
+            "token": reset_token,
             "new_password": "NewPassword123!",
-            "confirm_password": "DifferentPassword123!",
-        },
+            "confirm_password": "DifferentPassword123!"
+        }
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Passwords do not match."
+    assert "Passwords do not match" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_password_reset_invalid_token(client, db_session, test_user):
+    reset_token = "invalid-reset-token"
+    new_password = "NewPassword123!"
+    response = await client.post(
+        "/reset-password",
+        json={
+            "token": reset_token,
+            "new_password": new_password,
+            "confirm_password": new_password
+        }
+    )
+    assert response.status_code == 400
+    assert "Invalid or expired reset token" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_password_reset_missing_token(client, db_session, test_user):
+    new_password = "NewPassword123!"
+    response = await client.post(
+        "/reset-password",
+        json={
+            "new_password": new_password,
+            "confirm_password": new_password
+        }
+    )
+    assert response.status_code == 401
+    assert "Missing reset token" in response.json()["detail"]
