@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 
 from passlib.context import CryptContext
-from sqlalchemy import Boolean, Column, DateTime, String
+from sqlalchemy import Boolean, Column, DateTime, String, bindparam, select
 from sqlalchemy.orm import Session
 
 from src.models.base import Base
@@ -27,7 +27,10 @@ class User(UUIDPrimaryKeyMixin, Base):
 
     @classmethod
     def get_by_reset_token(cls, db: Session, token: str) -> "User | None":
-        return db.query(cls).filter(cls.password_reset_token == token).first()
+        stmt = select(cls).where(
+            cls.password_reset_token == bindparam("reset_token")
+        )
+        return db.execute(stmt, {"reset_token": token}).scalars().first()
 
     def is_reset_token_valid(self) -> bool:
         if self.password_reset_token_expires_at is None:
