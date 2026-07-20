@@ -1,13 +1,21 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
-from src.api.v1.router import router as v1_router
-from src.database import init_db
+app = FastAPI()
 
-app = FastAPI(title="User Authentication System")
+class PasswordResetRequest(BaseModel):
+    token: str
+    new_password: str
+    confirm_password: str
 
-app.include_router(v1_router)
+class PasswordResetResponse(BaseModel):
+    message: str
 
-
-@app.on_event("startup")
-def on_startup() -> None:
-    init_db()
+@app.post("/reset-password", response_model=PasswordResetResponse, responses={400: {"description": "Bad Request"}, 401: {"description": "Unauthorized"}})
+async def reset_password(request: PasswordResetRequest):
+    """
+    summary: Reset user password
+    description: This endpoint allows users to reset their password using a valid reset token.
+    """
+    # Implementation goes here
+    pass
