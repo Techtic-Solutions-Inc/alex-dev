@@ -13,7 +13,7 @@ class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/login", response_model=LoginResponse, summary="User Login", description="Authenticate user and return access token.", responses={401: {"description": "Unauthorized"}, 422: {"description": "Unprocessable Entity"}})
 async def login(request: LoginRequest):
     user = authenticate_user(request.username, request.password)
     if not user:
