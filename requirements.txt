@@ -1,1 +1,3 @@
-sqlalchemy
+flask
+requests
+auth0-python
