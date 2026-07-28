@@ -1,12 +1,12 @@
 
+
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from fastapi.testclient import TestClient
-from src.main import app
+
 from src.database import Base, get_db
-from src.services.user_service import UserService, get_user_service
-from unittest.mock import patch
+from src.main import app
 
 DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/test_db"
 
