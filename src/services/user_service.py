@@ -1,6 +1,6 @@
-from typing import Any
 import base64
 import json
+from typing import Any
 
 from sqlalchemy import bindparam, select
 from sqlalchemy.orm import Session
@@ -70,4 +70,4 @@ class UserService:
             return None
 
 
-__all__ = ["UserService", "AuthenticationError"]
+__all__ = ["AuthenticationError", "UserService"]

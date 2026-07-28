@@ -1,12 +1,14 @@
 
+from unittest.mock import MagicMock
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+
 from src.main import app
 from src.models.base import Base
 from src.services.auth0_service import Auth0Service
-from unittest.mock import MagicMock
 
 DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/test_db"
 
