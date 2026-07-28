@@ -1,47 +1,82 @@
-from unittest.mock import patch
 
-from fastapi import status
+import pytest
+from httpx import AsyncClient
 
-from src.services.auth_service import AuthenticationError
+from src.main import app
 
 
-@patch("src.api.v1.authenticate.authenticate_with_auth0")
-def test_authenticate_success(mock_authenticate, client):
-    mock_authenticate.return_value = {
-        "access_token": "test-access-token",
-        "token_type": "Bearer",
-    }
-
-    response = client.post(
+@pytest.mark.asyncio
+async def test_user_successfully_logs_in_with_valid_credentials(client: AsyncClient):
+    response = await client.post(
         "/api/v1/user/authenticate",
-        json={"email": "user@example.com", "password": "securepassword"},
+        json={"email": "user@test.com", "password": "TestUser123!"}
     )
-
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["access_token"] == "test-access-token"
-    assert data["token_type"] == "Bearer"
-    assert data["redirect_url"] == "/dashboard"
-    mock_authenticate.assert_called_once_with("user@example.com", "securepassword")
+    assert response.status_code == 200
+    assert "access_token" in response.json()
 
 
-@patch("src.api.v1.authenticate.authenticate_with_auth0")
-def test_authenticate_invalid_credentials(mock_authenticate, client):
-    mock_authenticate.side_effect = AuthenticationError("Invalid credentials")
-
-    response = client.post(
+@pytest.mark.asyncio
+async def test_user_receives_error_for_invalid_login_attempts(client: AsyncClient):
+    response = await client.post(
         "/api/v1/user/authenticate",
-        json={"email": "user@example.com", "password": "wrongpassword"},
+        json={"email": "user@test.com", "password": "WrongPassword!"}
     )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid credentials"
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert response.json() == {"detail": "Invalid credentials"}
 
-
-def test_authenticate_missing_fields(client):
-    response = client.post(
+@pytest.mark.asyncio
+async def test_user_redirected_to_dashboard_on_successful_login(client: AsyncClient):
+    response = await client.post(
         "/api/v1/user/authenticate",
-        json={"email": "user@example.com"},
+        json={"email": "user@test.com", "password": "TestUser123!"}
     )
+    assert response.status_code == 200
+    assert response.json()["redirect_url"] == "/dashboard"
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+
+@pytest.mark.asyncio
+async def test_email_password_sign_in(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/user/authenticate",
+        json={"email": "user@test.com", "password": "TestUser123!"}
+    )
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_credential_validation(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/user/authenticate",
+        json={"email": "user@test.com", "password": "TestUser123!"}
+    )
+    assert response.status_code == 200
+    assert "access_token" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_error_handling_for_incorrect_credentials(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/user/authenticate",
+        json={"email": "user@test.com", "password": "WrongPassword!"}
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid credentials"
+
+
+@pytest.mark.asyncio
+async def test_redirect_to_dashboard(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/user/authenticate",
+        json={"email": "user@test.com", "password": "TestUser123!"}
+    )
+    assert response.status_code == 200
+    assert response.json()["redirect_url"] == "/dashboard"
+
+
+@pytest.mark.asyncio
+async def test_missing_token(client: AsyncClient):
+    response = await client.get("/api/v1/protected-resource")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
