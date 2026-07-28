@@ -20,6 +20,25 @@ class SystemError(Exception):
     """Raised when there is a system error during authentication."""
 
 
+def _validate_token_response(token_response: Any) -> dict[str, Any]:
+    """Validate Auth0 token response structure before returning to callers."""
+    if not isinstance(token_response, dict):
+        logger.error("Auth0 returned non-dict token response: %s", type(token_response).__name__)
+        raise SystemError("Authentication service returned an invalid response")
+
+    access_token = token_response.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        logger.error("Auth0 response missing or invalid access_token")
+        raise AuthenticationError("Invalid credentials")
+
+    token_type = token_response.get("token_type")
+    if token_type is not None and not isinstance(token_type, str):
+        logger.error("Auth0 response has invalid token_type")
+        raise SystemError("Authentication service returned an invalid response")
+
+    return token_response
+
+
 def authenticate_with_auth0(email: str, password: str) -> dict[str, Any]:
     """Validate user credentials against Auth0 and return token data."""
     if not AUTH0_DOMAIN or not AUTH0_CLIENT_ID:
@@ -39,7 +58,7 @@ def authenticate_with_auth0(email: str, password: str) -> dict[str, Any]:
             scope="openid profile email",
         )
         logger.info("Successful authentication for email=%s", email)
-        return token_response
+        return _validate_token_response(token_response)
     except Auth0Error as exc:
         if exc.status_code == 401:
             logger.warning("Failed authentication for email=%s: Invalid credentials", email)
