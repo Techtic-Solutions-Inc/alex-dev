@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from src.api.deps import get_auth_service, get_db
 from src.schemas.auth import AuthenticateRequest, AuthenticateResponse
-from src.services.auth_service import AuthService, AuthenticationError
+from src.services.auth_service import AuthenticationError, AuthService
 
 router = APIRouter(prefix="/user", tags=["user"])
 
