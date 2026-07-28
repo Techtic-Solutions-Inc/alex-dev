@@ -2,8 +2,6 @@
 import pytest
 from httpx import AsyncClient
 
-from src.main import app
-
 
 @pytest.mark.asyncio
 async def test_user_successfully_logs_in_with_valid_credentials(client: AsyncClient):
