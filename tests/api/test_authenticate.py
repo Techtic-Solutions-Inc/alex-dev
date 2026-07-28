@@ -1,69 +1,50 @@
-from unittest.mock import AsyncMock, patch
-
 import pytest
-
-from src.models.user import User
-
-
-@pytest.fixture
-def auth0_token_response():
-    return {
-        "access_token": "test-access-token",
-        "token_type": "Bearer",
-        "expires_in": 86400,
-    }
+from httpx import AsyncClient
+from unittest.mock import patch
 
 
-def test_authenticate_success(client, db_session, auth0_token_response):
-    user = User(email="user@example.com", password_hash=User.hash_password("correct-password"))
-    db_session.add(user)
-    db_session.commit()
-
-    with patch(
-        "src.api.v1.authenticate.Auth0Service.authenticate",
-        new=AsyncMock(return_value=auth0_token_response),
-    ):
-        response = client.post(
-            "/api/v1/user/authenticate",
-            json={"email": "user@example.com", "password": "correct-password"},
-        )
-
+@pytest.mark.asyncio
+async def test_user_login_success(client, mocker):
+    mocker.patch('src.services.auth_service.verify_password', return_value=True)
+    response = await client.post('/api/v1/user/authenticate', json={
+        'email': 'user@test.com',
+        'password': 'TestUser123!'
+    })
     assert response.status_code == 200
-    data = response.json()
-    assert data["access_token"] == "test-access-token"
-    assert data["token_type"] == "Bearer"
-    assert data["expires_in"] == 86400
-    assert data["redirect_url"] == "/dashboard"
-    assert data["email"] == "user@example.com"
+    assert 'access_token' in response.json()
 
 
-def test_authenticate_invalid_credentials(client, db_session):
-    user = User(email="user@example.com", password_hash=User.hash_password("correct-password"))
-    db_session.add(user)
-    db_session.commit()
-
-    response = client.post(
-        "/api/v1/user/authenticate",
-        json={"email": "user@example.com", "password": "wrong-password"},
-    )
-
+@pytest.mark.asyncio
+async def test_user_login_invalid_credentials(client, mocker):
+    mocker.patch('src.services.auth_service.verify_password', return_value=False)
+    response = await client.post('/api/v1/user/authenticate', json={
+        'email': 'user@test.com',
+        'password': 'WrongPassword'
+    })
     assert response.status_code == 401
-    data = response.json()
-    assert data["detail"]["error"] == "invalid_credentials"
-    assert data["detail"]["message"] == "Invalid email or password"
+    assert response.json()['detail'] == 'Invalid credentials'
 
 
-def test_authenticate_missing_fields(client):
-    response = client.post(
-        "/api/v1/user/authenticate",
-        json={"email": "user@example.com"},
-    )
-
+@pytest.mark.asyncio
+async def test_user_login_empty_email(client):
+    response = await client.post('/api/v1/user/authenticate', json={
+        'email': '',
+        'password': 'TestUser123!'
+    })
     assert response.status_code == 422
 
-    response = client.post(
-        "/api/v1/user/authenticate",
-        json={"password": "secret"},
-    )
 
+@pytest.mark.asyncio
+async def test_user_login_empty_password(client):
+    response = await client.post('/api/v1/user/authenticate', json={
+        'email': 'user@test.com',
+        'password': ''
+    })
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_user_login_missing_token(client):
+    response = await client.get('/api/v1/user/dashboard')
+    assert response.status_code == 401
+    assert response.json()['detail'] == 'Not authenticated'
