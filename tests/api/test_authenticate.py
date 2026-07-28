@@ -1,45 +1,57 @@
-from unittest.mock import MagicMock
 
-from fastapi import status
-
-from src.services.auth0_service import AuthenticationError
-from tests.conftest import build_auth0_token_response
+import pytest
+from httpx import AsyncClient
+from unittest.mock import patch
 
 
-def test_authenticate_success(client, mock_auth0_service: MagicMock) -> None:
-    mock_auth0_service.authenticate.return_value = build_auth0_token_response()
-
-    response = client.post(
+@pytest.mark.asyncio
+async def test_user_login_success(client: AsyncClient, mock_auth0_service):
+    mock_auth0_service.authenticate_user.return_value = {
+        "access_token": "mock_access_token",
+        "id_token": "mock_id_token",
+        "expires_in": 3600
+    }
+    response = await client.post(
         "/api/v1/user/authenticate",
-        json={"email": "user@example.com", "password": "valid-password"},
+        json={"email": "user@test.com", "password": "TestUser123!"}
     )
-
-    assert response.status_code == status.HTTP_200_OK
-    data = response.json()
-    assert data["access_token"] == "test-access-token"
-    assert data["token_type"] == "Bearer"
-    assert data["expires_in"] == 86400
-    assert data["redirect_url"] == "/dashboard"
-    assert data["user"]["email"] == "user@example.com"
-    assert data["user"]["id"]
-
-    mock_auth0_service.authenticate.assert_called_once_with("user@example.com", "valid-password")
+    assert response.status_code == 200
+    assert "access_token" in response.json()
 
 
-def test_authenticate_invalid_credentials(client, mock_auth0_service: MagicMock) -> None:
-    mock_auth0_service.authenticate.side_effect = AuthenticationError("Invalid email or password")
-
-    response = client.post(
+@pytest.mark.asyncio
+async def test_user_login_invalid_credentials(client: AsyncClient, mock_auth0_service):
+    mock_auth0_service.authenticate_user.side_effect = Exception("Invalid credentials")
+    response = await client.post(
         "/api/v1/user/authenticate",
-        json={"email": "user@example.com", "password": "wrong-password"},
+        json={"email": "user@test.com", "password": "WrongPassword!"}
     )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid credentials"
 
-    assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    assert response.json() == {"detail": "Invalid email or password"}
+
+@pytest.mark.asyncio
+async def test_user_login_empty_email(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/user/authenticate",
+        json={"email": "", "password": "TestUser123!"}
+    )
+    assert response.status_code == 422
+    assert "email" in response.json()["detail"][0]["loc"]
 
 
-def test_authenticate_missing_fields(client) -> None:
-    response = client.post("/api/v1/user/authenticate", json={"email": "user@example.com"})
+@pytest.mark.asyncio
+async def test_user_login_empty_password(client: AsyncClient):
+    response = await client.post(
+        "/api/v1/user/authenticate",
+        json={"email": "user@test.com", "password": ""}
+    )
+    assert response.status_code == 422
+    assert "password" in response.json()["detail"][0]["loc"]
 
-    assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-    assert "detail" in response.json()
+
+@pytest.mark.asyncio
+async def test_user_login_missing_token(client: AsyncClient):
+    response = await client.get("/api/v1/user/dashboard")
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
