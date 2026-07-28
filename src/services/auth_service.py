@@ -16,11 +16,15 @@ class AuthenticationError(Exception):
     """Raised when user credentials are invalid or authentication fails."""
 
 
+class SystemError(Exception):
+    """Raised when there is a system error during authentication."""
+
+
 def authenticate_with_auth0(email: str, password: str) -> dict[str, Any]:
     """Validate user credentials against Auth0 and return token data."""
     if not AUTH0_DOMAIN or not AUTH0_CLIENT_ID:
         logger.error("Auth0 configuration is incomplete")
-        raise AuthenticationError("Authentication service is unavailable")
+        raise SystemError("Authentication service is unavailable")
 
     try:
         get_token = GetToken(
@@ -37,5 +41,9 @@ def authenticate_with_auth0(email: str, password: str) -> dict[str, Any]:
         logger.info("Successful authentication for email=%s", email)
         return token_response
     except Auth0Error as exc:
-        logger.warning("Failed authentication for email=%s: %s", email, exc)
-        raise AuthenticationError("Invalid credentials") from exc
+        if exc.status_code == 401:
+            logger.warning("Failed authentication for email=%s: Invalid credentials", email)
+            raise AuthenticationError("Invalid credentials") from exc
+        else:
+            logger.error("System error during authentication for email=%s: %s", email, exc)
+            raise SystemError("Authentication service encountered an error") from exc
