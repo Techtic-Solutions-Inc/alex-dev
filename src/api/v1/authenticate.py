@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from src.config import Settings, get_settings
@@ -29,7 +30,8 @@ async def authenticate_user(
     settings: Settings = Depends(get_settings),
     auth0_service: Auth0Service = Depends(get_auth0_service),
 ) -> AuthenticateResponse:
-    user = db.query(User).filter(User.email == request.email).first()
+    stmt = select(User).where(User.email == request.email)
+    user = db.scalars(stmt).one_or_none()
 
     if user is not None and not user.verify_password(request.password):
         raise HTTPException(
