@@ -23,6 +23,13 @@ class Settings(BaseSettings):
     rate_limit_window_seconds: int = 60
     rate_limit_strategy: str = "ip_and_path"
     rate_limit_excluded_paths: list[str] = ["/health"]
+    rate_limit_trusted_proxies: list[str] = [
+        "127.0.0.0/8",
+        "::1/128",
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+    ]
 
     @field_validator("rate_limit_strategy")
     @classmethod
@@ -39,6 +46,13 @@ class Settings(BaseSettings):
     def parse_excluded_paths(cls, value: str | list[str]) -> list[str]:
         if isinstance(value, str):
             return [path.strip() for path in value.split(",") if path.strip()]
+        return value
+
+    @field_validator("rate_limit_trusted_proxies", mode="before")
+    @classmethod
+    def parse_trusted_proxies(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [proxy.strip() for proxy in value.split(",") if proxy.strip()]
         return value
 
 
