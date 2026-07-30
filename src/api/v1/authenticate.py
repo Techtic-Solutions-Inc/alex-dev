@@ -51,3 +51,19 @@ def authenticate_user(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=exc.message,
         ) from exc
+
+
+@router.get(
+    "/dashboard",
+    responses={
+        status.HTTP_401_UNAUTHORIZED: {
+            "description": "Not authenticated",
+            "content": {"application/json": {"example": {"detail": "Not authenticated"}}},
+        },
+    },
+)
+def user_dashboard() -> None:
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+    )

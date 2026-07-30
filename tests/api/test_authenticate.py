@@ -21,7 +21,9 @@ async def test_user_login_success(client: AsyncClient, mock_auth0_service):
 
 @pytest.mark.asyncio
 async def test_user_login_invalid_credentials(client: AsyncClient, mock_auth0_service):
-    mock_auth0_service.authenticate_user.side_effect = Exception("Invalid credentials")
+    from src.services.auth0_service import AuthenticationError
+
+    mock_auth0_service.authenticate_user.side_effect = AuthenticationError("Invalid credentials")
     response = await client.post(
         "/api/v1/user/authenticate",
         json={"email": "user@test.com", "password": "WrongPassword!"}

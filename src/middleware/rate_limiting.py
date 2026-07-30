@@ -2,13 +2,21 @@ import ipaddress
 from collections.abc import Awaitable, Callable
 from enum import Enum
 from inspect import isawaitable
-from fastapi import FastAPI, Request
+
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
-from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate, RateItem
+from pyrate_limiter import Duration, Limiter, RequestRate
 from pyrate_limiter.exceptions import BucketFullException
+from starlette.responses import Response
+
+from src.config import Settings
+
+RATE_LIMIT_EXCEEDED_DETAIL = "Rate limit exceeded"
+
 
 class RateLimitStrategy(str, Enum):
     IP = "ip"
+    USER = "user"
     IP_AND_PATH = "ip_and_path"
 
 
@@ -97,19 +105,64 @@ async def ip_identifier(request: Request) -> str:
     return get_client_ip(request)
 
 
-async def path_identifier(request: Request) -> str:
-    return request.url.path
+async def user_identifier(request: Request) -> str:
+    authorization = request.headers.get("Authorization")
+    if authorization:
+        return authorization
+    return get_client_ip(request)
 
 
-IDENTIFIER_MAP = {
+async def ip_and_path_identifier(request: Request) -> str:
+    return f"{get_client_ip(request)}:{request.url.path}"
+
+
+IDENTIFIER_MAP: dict[
+    RateLimitStrategy,
+    Callable[[Request], str | Awaitable[str]],
+] = {
     RateLimitStrategy.IP: ip_identifier,
-    RateLimitStrategy.IP_AND_PATH: lambda request: f"{get_client_ip(request)}:{request.url.path}",
+    RateLimitStrategy.USER: user_identifier,
+    RateLimitStrategy.IP_AND_PATH: ip_and_path_identifier,
 }
 
 
+async def _resolve_identifier(
+    request: Request,
+    identifier_func: Callable[[Request], str | Awaitable[str]],
+) -> str:
+    result = identifier_func(request)
+    if isawaitable(result):
+        return await result
+    return result
+
+
 def create_limiter(requests: int, window_seconds: int) -> Limiter:
-    rate = Rate(requests, Duration.SECOND * window_seconds)
-    return Limiter(RateItem(rate, InMemoryBucket))
+    return Limiter(RequestRate(requests, Duration.SECOND * window_seconds))
+
+
+def reset_rate_limiters() -> None:
+    Limiter.bucket_group.clear()
+
+
+def create_rate_limiter(
+    requests: int,
+    window_seconds: int,
+    strategy: RateLimitStrategy,
+) -> Callable[[Request], Awaitable[None]]:
+    limiter = create_limiter(requests, window_seconds)
+    identifier_func = IDENTIFIER_MAP[strategy]
+
+    async def rate_limit_dependency(request: Request) -> None:
+        identifier = await _resolve_identifier(request, identifier_func)
+        try:
+            limiter.try_acquire(f"route:{identifier}")
+        except BucketFullException as exc:
+            raise HTTPException(
+                status_code=429,
+                detail=RATE_LIMIT_EXCEEDED_DETAIL,
+            ) from exc
+
+    return rate_limit_dependency
 
 
 def setup_rate_limiting(app: FastAPI, settings: Settings) -> None:
@@ -120,18 +173,23 @@ def setup_rate_limiting(app: FastAPI, settings: Settings) -> None:
 
     limiter = create_limiter(settings.rate_limit_requests, settings.rate_limit_window_seconds)
     identifier_func = IDENTIFIER_MAP[RateLimitStrategy(settings.rate_limit_strategy)]
+    excluded_paths = set(settings.rate_limit_excluded_paths)
 
     @app.middleware("http")
-    async def rate_limit_middleware(request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
-        identifier = await identifier_func(request)
-        try:
-            limiter.try_acquire(identifier)
-        except BucketFullException:
-            return JSONResponse(status_code=429, content={"detail": "Too Many Requests"})
-        except Exception as e:
-            # Log unexpected errors and return 500
-            print(f"Unexpected error during rate limiting: {e}")
-            return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
+    async def rate_limit_middleware(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        if request.url.path in excluded_paths:
+            return await call_next(request)
 
-        response = await call_next(request)
-        return response
+        identifier = await _resolve_identifier(request, identifier_func)
+        try:
+            limiter.try_acquire(f"global:{identifier}")
+        except BucketFullException:
+            return JSONResponse(
+                status_code=429,
+                content={"detail": RATE_LIMIT_EXCEEDED_DETAIL},
+            )
+
+        return await call_next(request)

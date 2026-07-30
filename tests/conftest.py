@@ -1,15 +1,17 @@
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 from src.main import app
+from src.middleware.rate_limiting import reset_rate_limiters
 from src.models.base import Base
-from src.services.auth0_service import Auth0Service
 
 DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/project_8e8b832f"
+
 
 @pytest.fixture(scope="session")
 def engine():
@@ -23,33 +25,44 @@ def tables(engine):
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def client(tables):
-    with TestClient(app) as client:
-        yield client
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as async_client:
+        yield async_client
 
 
 @pytest.fixture
 def mock_auth0_service(mocker):
-    mock = mocker.patch("src.services.auth0_service.Auth0Service")
-    mock.return_value = MagicMock(spec=Auth0Service)
-    return mock
+    mock_class = mocker.patch("src.services.user_service.Auth0Service")
+    instance = MagicMock()
+    mock_class.return_value = instance
+    mock_class.authenticate_user = instance.authenticate
+    return mock_class
 
 
-@pytest.fixture
-async def test_users(engine):
+@pytest.fixture(autouse=True)
+def default_auth0_success(mock_auth0_service):
+    mock_auth0_service.authenticate_user.return_value = {
+        "access_token": "mock_access_token",
+        "id_token": "mock_id_token",
+        "expires_in": 3600,
+    }
+    yield
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    reset_rate_limiters()
+    yield
+    reset_rate_limiters()
+
+
+@pytest_asyncio.fixture
+async def test_users(engine, tables):
     Session = sessionmaker(bind=engine)
     session = Session()
-    session.execute("""
-    INSERT INTO users (email, role, password, is_active) VALUES
-    ('admin@test.com', 'admin', 'TestAdmin123!', true),
-    ('user@test.com', 'user', 'TestUser123!', true),
-    ('viewer@test.com', 'viewer', 'TestViewer123!', true),
-    ('inactive@test.com', 'user', 'TestUser123!', false),
-    ('newuser@test.com', 'user', 'NewUser123!', true);
-    """)
-    session.commit()
-    yield
-    session.execute("DELETE FROM users;")
+    session.execute(text("DELETE FROM users"))
     session.commit()
     session.close()
+    yield
