@@ -10,6 +10,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 
 from alembic import op
+from src.models.base import GUID
 
 # revision identifiers, used by Alembic.
 revision: str = 'c448aeb3f476'
@@ -24,7 +25,7 @@ def upgrade() -> None:
     op.create_table('users',
     sa.Column('email', sa.String(length=255), nullable=False),
     sa.Column('auth0_id', sa.String(length=255), nullable=True),
-    sa.Column('id', src.models.base.GUID(), nullable=False),
+    sa.Column('id', GUID(), nullable=False),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_users_auth0_id'), 'users', ['auth0_id'], unique=True)
