@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.database import get_db
+from src.middleware.rate_limiting import RateLimitStrategy, create_rate_limiter
 from src.schemas.auth import AuthenticateRequest, AuthenticateResponse
 from src.services.auth0_service import AuthenticationError
 from src.services.user_service import UserService
@@ -16,6 +17,15 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
 @router.post(
     "/authenticate",
     response_model=AuthenticateResponse,
+    dependencies=[
+        Depends(
+            create_rate_limiter(
+                requests=10,
+                window_seconds=60,
+                strategy=RateLimitStrategy.IP,
+            )
+        )
+    ],
     responses={
         status.HTTP_401_UNAUTHORIZED: {
             "description": "Invalid credentials",

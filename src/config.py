@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,6 +17,29 @@ class Settings(BaseSettings):
     auth0_connection: str = "Username-Password-Authentication"
 
     dashboard_url: str = "/dashboard"
+
+    rate_limit_enabled: bool = True
+    rate_limit_requests: int = 100
+    rate_limit_window_seconds: int = 60
+    rate_limit_strategy: str = "ip_and_path"
+    rate_limit_excluded_paths: list[str] = ["/health"]
+
+    @field_validator("rate_limit_strategy")
+    @classmethod
+    def validate_rate_limit_strategy(cls, value: str) -> str:
+        valid_strategies = {"ip", "user", "ip_and_path"}
+        if value not in valid_strategies:
+            raise ValueError(
+                f"rate_limit_strategy must be one of: {', '.join(sorted(valid_strategies))}"
+            )
+        return value
+
+    @field_validator("rate_limit_excluded_paths", mode="before")
+    @classmethod
+    def parse_excluded_paths(cls, value: str | list[str]) -> list[str]:
+        if isinstance(value, str):
+            return [path.strip() for path in value.split(",") if path.strip()]
+        return value
 
 
 @lru_cache

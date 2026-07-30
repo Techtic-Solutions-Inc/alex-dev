@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from src.api.v1.router import router as v1_router
 from src.config import get_settings
 from src.database import engine
+from src.middleware.rate_limiting import setup_rate_limiting
 from src.models.base import Base
 
 settings = get_settings()
@@ -18,6 +19,7 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+setup_rate_limiting(app, settings)
 app.include_router(v1_router, prefix="/api/v1")
 
 
