@@ -9,10 +9,8 @@ from src.services.user_service import UserService
 
 router = APIRouter(prefix="/user", tags=["user"])
 
-
 def get_user_service(db: Session = Depends(get_db)) -> UserService:
     return UserService(db=db)
-
 
 @router.post(
     "/authenticate",
@@ -34,7 +32,13 @@ def get_user_service(db: Session = Depends(get_db)) -> UserService:
         status.HTTP_422_UNPROCESSABLE_ENTITY: {
             "description": "Validation error",
         },
+        status.HTTP_500_INTERNAL_SERVER_ERROR: {
+            "description": "Internal server error",
+            "content": {"application/json": {"example": {"detail": "Internal server error occurred"}}},
+        },
     },
+    summary="Authenticate a user",
+    description="Authenticate a user using their email and password. Returns a token if successful."
 )
 def authenticate_user(
     request: AuthenticateRequest,
