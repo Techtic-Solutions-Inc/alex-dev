@@ -4,7 +4,7 @@ from inspect import isawaitable
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi_limiter.depends import RateLimiter
-from pyrate_limiter import Duration, InMemoryBucket, Limiter, Rate, RateItem
+from pyrate_limiter import Duration, Limiter, Rate, RateItem
 from pyrate_limiter.abstracts import AbstractBucket, BucketFactory
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
@@ -93,111 +93,44 @@ def create_limiter(requests: int, window_seconds: int) -> Limiter:
     return Limiter(KeyedBucketFactory(rates))
 
 
-def get_identifier(strategy: RateLimitStrategy | str) -> IdentifierFunc:
-    if isinstance(strategy, str):
-        strategy = RateLimitStrategy(strategy)
-    return IDENTIFIER_MAP[strategy]
+def create_rate_limiter(requests: int, window_seconds: int, strategy: RateLimitStrategy) -> Callable:
+    limiter = create_limiter(requests, window_seconds)
+    identifier_func = IDENTIFIER_MAP[strategy]
+
+    async def rate_limiter_dependency(request: Request, response: Response) -> None:
+        identifier = await identifier_func(request)
+        try:
+            limiter.try_acquire(identifier)
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Rate limit exceeded",
+            ) from e
+
+    return rate_limiter_dependency
 
 
-def build_rate_limit_headers(settings: Settings) -> dict[str, str]:
-    return {
-        "Retry-After": str(settings.rate_limit_window_seconds),
-        "X-RateLimit-Limit": str(settings.rate_limit_requests),
-    }
-
-
-def create_rate_limit_exceeded_callback(
-    settings: Settings,
-) -> MiddlewareCallback:
-    headers = build_rate_limit_headers(settings)
-
-    async def rate_limit_exceeded_callback(_request: Request) -> JSONResponse:
-        return JSONResponse(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            content={"detail": "Rate limit exceeded. Please try again later."},
-            headers=headers,
-        )
-
-    return rate_limit_exceeded_callback
-
-
-def create_dependency_rate_limit_callback() -> DependencyCallback:
-    def rate_limit_exceeded_callback(_request: Request, _response: Response) -> None:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Rate limit exceeded. Please try again later.",
-        )
-
-    return rate_limit_exceeded_callback
-
-
-class RateLimitMiddleware(BaseHTTPMiddleware):
-    def __init__(
-        self,
-        app,
-        limiter: Limiter,
-        identifier: IdentifierFunc,
-        callback: MiddlewareCallback,
-        skip: SkipFunc | None = None,
-        blocking: bool = False,
-    ) -> None:
-        super().__init__(app)
-        self.limiter = limiter
-        self.identifier = identifier
-        self.callback = callback
-        self.skip = skip
-        self.blocking = blocking
-
-    async def dispatch(self, request: Request, call_next):
-        if self.skip and await self.skip(request):
-            return await call_next(request)
-
-        rate_key = await self.identifier(request)
-        success = await self.limiter.try_acquire_async(rate_key, blocking=self.blocking)
-        if not success:
-            return await self.callback(request)
-
-        return await call_next(request)
-
-
-def create_skip_rate_limit(excluded_paths: set[str]) -> SkipFunc:
-    async def skip_rate_limit(request: Request) -> bool:
-        return request.url.path in excluded_paths
-
-    return skip_rate_limit
-
-
-def setup_rate_limiting(app: FastAPI, settings: Settings | None = None) -> None:
-    settings = settings or get_settings()
+def setup_rate_limiting(app: FastAPI, settings: Settings) -> None:
     if not settings.rate_limit_enabled:
         return
 
-    excluded_paths = set(settings.rate_limit_excluded_paths)
     limiter = create_limiter(settings.rate_limit_requests, settings.rate_limit_window_seconds)
+    identifier_func = IDENTIFIER_MAP[RateLimitStrategy(settings.rate_limit_strategy)]
 
-    app.add_middleware(
-        RateLimitMiddleware,
-        limiter=limiter,
-        identifier=get_identifier(settings.rate_limit_strategy),
-        callback=create_rate_limit_exceeded_callback(settings),
-        skip=create_skip_rate_limit(excluded_paths),
-    )
+    class RateLimitMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request: Request, call_next: Callable[[Request], Awaitable[Response]]) -> Response:
+            if request.url.path in settings.rate_limit_excluded_paths:
+                return await call_next(request)
 
+            identifier = await identifier_func(request)
+            try:
+                limiter.try_acquire(identifier)
+            except Exception as e:
+                return JSONResponse(
+                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                    content={"detail": "Rate limit exceeded"},
+                )
 
-def create_rate_limiter(
-    requests: int | None = None,
-    window_seconds: int | None = None,
-    strategy: RateLimitStrategy | str | None = None,
-) -> RateLimiter:
-    settings = get_settings()
-    resolved_requests = requests if requests is not None else settings.rate_limit_requests
-    resolved_window = (
-        window_seconds if window_seconds is not None else settings.rate_limit_window_seconds
-    )
-    resolved_strategy = strategy if strategy is not None else settings.rate_limit_strategy
+            return await call_next(request)
 
-    return RateLimiter(
-        limiter=create_limiter(resolved_requests, resolved_window),
-        identifier=get_identifier(resolved_strategy),
-        callback=create_dependency_rate_limit_callback(),
-    )
+    app.add_middleware(RateLimitMiddleware)
