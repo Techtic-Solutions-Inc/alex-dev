@@ -9,7 +9,7 @@ from src.main import app
 from src.models.base import Base
 from src.services.auth0_service import Auth0Service
 
-DATABASE_URL = "postgresql://postgres:postgres@localhost:5432/test_db"
+DATABASE_URL = "postgresql://postgres:postgres@localhost:5433/project_8e8b832f"
 
 @pytest.fixture(scope="session")
 def engine():
