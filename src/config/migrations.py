@@ -59,6 +59,48 @@ def get_alembic_config() -> Config:
     return config
 
 
+def _table_exists(table_name: str) -> bool:
+    """Return True when the given table exists in the database."""
+    database_url = _get_database_url()
+    sync_url = _get_sync_url(normalize_database_url(database_url) or database_url)
+    engine = create_engine(sync_url)
+    try:
+        with engine.connect() as conn:
+            return conn.dialect.has_table(conn, table_name)
+    finally:
+        engine.dispose()
+
+
+def reset_test_database() -> None:
+    """Drop managed tables and Alembic state for a clean migration run."""
+    _get_database_url()
+    database_url = normalize_database_url(_get_database_url()) or _get_database_url()
+    sync_url = _get_sync_url(database_url)
+    engine = create_engine(sync_url)
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("DROP TABLE IF EXISTS users CASCADE"))
+            conn.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+    finally:
+        engine.dispose()
+
+
+def ensure_migrations_at_head() -> None:
+    """Apply migrations, resetting orphaned schema when Alembic state is missing."""
+    head = get_head_revision()
+    current = get_current_revision()
+    if current == head:
+        return
+
+    if current is None and _table_exists("users"):
+        logger.warning(
+            "Found users table without Alembic revision; resetting test database"
+        )
+        reset_test_database()
+
+    run_migrations()
+
+
 def run_migrations() -> None:
     """Apply all pending Alembic migrations up to head."""
     _get_database_url()

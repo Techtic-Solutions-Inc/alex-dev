@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest_asyncio
 from dotenv import load_dotenv
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, inspect
+from sqlalchemy import delete
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -19,9 +19,8 @@ os.environ.setdefault("SENDGRID_FROM_EMAIL", "noreply@test.com")
 
 from api.middlewares.rate_limiter import limiter  # noqa: E402
 from config.database import get_db_session, normalize_database_url  # noqa: E402
-from config.migrations import run_migrations  # noqa: E402
+from config.migrations import ensure_migrations_at_head  # noqa: E402
 from main import app  # noqa: E402
-from models.base import Base  # noqa: E402
 from models.user import User  # noqa: E402
 
 limiter.enabled = False
@@ -31,19 +30,9 @@ if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not configured for tests")
 
 
-async def _ensure_users_table(engine) -> None:
-    async with engine.connect() as conn:
-        users_exists = await conn.run_sync(
-            lambda sync_conn: inspect(sync_conn).has_table("users")
-        )
-        if not users_exists:
-            await conn.run_sync(Base.metadata.create_all)
-            await conn.commit()
-
-
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
-    await asyncio.to_thread(run_migrations)
+    await asyncio.to_thread(ensure_migrations_at_head)
 
     engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
     session_factory = async_sessionmaker(
@@ -51,8 +40,6 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
         class_=AsyncSession,
         expire_on_commit=False,
     )
-
-    await _ensure_users_table(engine)
 
     async with session_factory() as session:
         await session.execute(delete(User))

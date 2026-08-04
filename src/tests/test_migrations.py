@@ -53,34 +53,26 @@ def database_url() -> str:
     return url
 
 
-def _reset_stale_alembic_state(database_url: str) -> None:
-    """Clear alembic_version when the DB references a missing revision."""
+def _reset_database(database_url: str) -> None:
+    """Drop managed tables and Alembic state for a clean migration run."""
     import asyncio
 
-    async def _drop_version_table() -> None:
+    async def _drop_managed_objects() -> None:
         engine = create_async_engine(database_url)
         async with engine.begin() as connection:
+            await connection.execute(text("DROP TABLE IF EXISTS users CASCADE"))
             await connection.execute(
                 text("DROP TABLE IF EXISTS alembic_version CASCADE")
             )
         await engine.dispose()
 
-    asyncio.run(_drop_version_table())
+    asyncio.run(_drop_managed_objects())
 
 
 @pytest.fixture(scope="module")
 def migrated_database(database_url: str):
     """Ensure migrations are applied before schema assertions."""
-    downgrade_result = _run_alembic("downgrade", "base")
-    if downgrade_result.returncode != 0:
-        stderr = downgrade_result.stderr or downgrade_result.stdout
-        if "Can't locate revision" in stderr:
-            _reset_stale_alembic_state(database_url)
-        else:
-            pytest.fail(
-                "Failed to reset database before migration test: "
-                f"{stderr}"
-            )
+    _reset_database(database_url)
 
     upgrade_result = _run_alembic("upgrade", "head")
     if upgrade_result.returncode != 0:
@@ -250,6 +242,8 @@ async def test_users_email_unique_constraint(migrated_database: str):
 
 
 def test_alembic_downgrade_removes_users_table(database_url: str):
+    _reset_database(database_url)
+
     upgrade_result = _run_alembic("upgrade", "head")
     assert upgrade_result.returncode == 0
 
@@ -277,12 +271,16 @@ def test_alembic_downgrade_removes_users_table(database_url: str):
 
 
 def test_alembic_downgrade_single_step(database_url: str):
-    _run_alembic("upgrade", "head")
+    _reset_database(database_url)
+
+    upgrade_result = _run_alembic("upgrade", "head")
+    assert upgrade_result.returncode == 0
 
     result = _run_alembic("downgrade", "-1")
     assert result.returncode == 0
 
-    _run_alembic("upgrade", "head")
+    restore_result = _run_alembic("upgrade", "head")
+    assert restore_result.returncode == 0
 
 
 def test_alembic_history_shows_revisions():
