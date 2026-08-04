@@ -8,7 +8,8 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    detail = "Rate limit exceeded"
     return JSONResponse(
         status_code=429,
-        content={"detail": "Rate limit exceeded"},
+        content={"detail": detail, "error": detail},
     )

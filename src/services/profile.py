@@ -1,5 +1,5 @@
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.schema import ProfileDetail, ProfileResponse, ProfileUpdateRequest
@@ -69,10 +69,14 @@ async def update_user_profile(
                     detail="Email already registered.",
                 )
 
-    for field, value in update_data.items():
-        setattr(user, field, value)
+    if update_data:
+        await db.execute(
+            update(User).where(User.id == user.id).values(**update_data)
+        )
+        await db.flush()
+        await db.commit()
 
-    await db.flush()
-    await db.refresh(user)
+    result = await db.execute(select(User).where(User.id == user.id))
+    updated_user = result.scalar_one()
 
-    return _user_to_profile(user)
+    return _user_to_profile(updated_user)

@@ -1,9 +1,17 @@
 import os
 from collections.abc import AsyncGenerator
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 from config.environment import get_pool_max_overflow, get_pool_size, is_testing
+
+# Ensure DATABASE_URL is available even if this module is imported before main.py.
+_config_dir = Path(__file__).resolve().parent
+_project_root = _config_dir.parent.parent
+load_dotenv(_project_root / ".env")
+load_dotenv(_config_dir.parent / ".env", override=False)
 
 
 def normalize_database_url(url: str | None) -> str | None:

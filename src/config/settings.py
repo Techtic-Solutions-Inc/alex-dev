@@ -1,4 +1,12 @@
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+_settings_dir = Path(__file__).resolve().parent
+_project_root = _settings_dir.parent.parent
+load_dotenv(_project_root / ".env")
+load_dotenv(_settings_dir.parent / ".env", override=False)
 
 JWT_SECRET = os.getenv("JWT_SECRET_KEY") or os.getenv("JWT_SECRET")
 JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")

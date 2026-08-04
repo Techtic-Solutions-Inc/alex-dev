@@ -52,6 +52,7 @@ async def register_user(
 
     try:
         await db.flush()
+        await db.commit()
     except IntegrityError:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -94,6 +95,7 @@ async def confirm_email(
 
     user.is_confirmed = True
     await db.flush()
+    await db.commit()
 
     return ConfirmEmailResponse(
         email=user.email,
