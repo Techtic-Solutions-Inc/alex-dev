@@ -347,11 +347,12 @@ def request(
     schema: str | None = None,
     endpoint_label: str | None = None,
     error_ok: bool = False,
-) -> tuple[httpx.Response, int]:
+) -> tuple[httpx.Response | None, int]:
     """Send HTTP request, validate, and record result."""
     url = f"{BASE_URL}{path}"
     hdrs = headers or {}
     start = time.time()
+    resp: httpx.Response | None = None
     try:
         resp = client.request(method, url, json=json_body, headers=hdrs, timeout=30.0)
     except Exception as exc:
@@ -365,11 +366,14 @@ def request(
             error=str(exc),
             response_time_ms=elapsed,
         )
-        raise
+        return None, elapsed
     elapsed = int((time.time() - start) * 1000)
 
     label = endpoint_label or f"{method} {path}"
     err_msg: str | None = None
+
+    if resp is None:
+        return None, elapsed
 
     if resp.status_code != expected:
         err_msg = f"Expected HTTP {expected}, got {resp.status_code}: {resp.text[:200]}"
@@ -418,31 +422,31 @@ def login_token(client: httpx.Client, email: str, role: str) -> str | None:
         json_body={"email": email, "password": TEST_PASSWORD},
         schema="LoginResponse",
     )
-    if resp.status_code == 200:
-        data = resp.json()
-        if "session_token" not in data:
+    if resp is None or resp.status_code != 200:
+        return None
+    data = resp.json()
+    if "session_token" not in data:
+        contract_violations.append(
+            {
+                "endpoint": "POST /auth/login",
+                "field": "session_token",
+                "expected_type": "str",
+                "actual_type": "missing",
+                "issue": "LoginResponse missing session_token",
+            }
+        )
+    for fe_field in ("access_token", "token_type", "expires_in"):
+        if fe_field not in data:
             contract_violations.append(
                 {
                     "endpoint": "POST /auth/login",
-                    "field": "session_token",
-                    "expected_type": "str",
+                    "field": fe_field,
+                    "expected_type": "str/int",
                     "actual_type": "missing",
-                    "issue": "LoginResponse missing session_token",
+                    "issue": "Frontend expects OAuth-style token fields",
                 }
             )
-        for fe_field in ("access_token", "token_type", "expires_in"):
-            if fe_field not in data:
-                contract_violations.append(
-                    {
-                        "endpoint": "POST /auth/login",
-                        "field": fe_field,
-                        "expected_type": "str/int",
-                        "actual_type": "missing",
-                        "issue": "Frontend expects OAuth-style token fields",
-                    }
-                )
-        return data.get("session_token")
-    return None
+    return data.get("session_token")
 
 
 def auth_headers(token: str) -> dict[str, str]:
@@ -473,7 +477,7 @@ def run_tests(seeded: dict[str, dict[str, Any]]) -> None:
                 role=spec["role"],
                 expected=200,
             )
-            if resp.status_code == 200:
+            if resp is not None and resp.status_code == 200:
                 body = resp.json()
                 for field in ("status", "database"):
                     if field not in body:
@@ -498,7 +502,7 @@ def run_tests(seeded: dict[str, dict[str, Any]]) -> None:
             json_body={"email": unique_email, "password": TEST_PASSWORD},
             schema="RegisterResponse",
         )
-        if resp.status_code in (503, 201):
+        if resp is not None and resp.status_code in (503, 201):
             user_row = db_get_user(unique_email)
             if not user_row or user_row["email"] != unique_email.lower():
                 db_verified = False
@@ -660,7 +664,7 @@ def run_tests(seeded: dict[str, dict[str, Any]]) -> None:
                 headers=auth_headers(token),
                 schema="ProfileResponse",
             )
-            if resp.status_code == 200:
+            if resp is not None and resp.status_code == 200:
                 body = resp.json()
                 if body.get("email") != email:
                     db_verified = False
@@ -720,7 +724,7 @@ def run_tests(seeded: dict[str, dict[str, Any]]) -> None:
                 headers=auth_headers(token),
                 schema="ProfileResponse",
             )
-            if resp.status_code == 200:
+            if resp is not None and resp.status_code == 200:
                 row = db_get_user(email)
                 if not row:
                     db_verified = False
