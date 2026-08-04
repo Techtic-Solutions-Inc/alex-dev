@@ -17,6 +17,9 @@ class User(MappedAsDataclass, Base):
     is_confirmed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False
     )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default="true", nullable=False
+    )
     first_name: Mapped[str | None] = mapped_column(
         String(100), nullable=True, default=None
     )

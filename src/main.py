@@ -10,6 +10,12 @@ if str(_src_dir) not in sys.path:
     sys.path.insert(0, str(_src_dir))
 
 from dotenv import load_dotenv
+
+# Load env before config/database modules read os.environ at import time.
+_project_root = _src_dir.parent
+load_dotenv(_project_root / ".env")
+load_dotenv(_src_dir / ".env", override=False)
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
@@ -28,8 +34,6 @@ from config.migrations import (
     has_pending_migrations,
     run_migrations,
 )
-
-load_dotenv()
 
 
 def should_auto_migrate() -> bool:

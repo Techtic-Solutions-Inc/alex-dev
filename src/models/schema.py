@@ -64,6 +64,26 @@ class ConfirmEmailResponse(BaseModel):
     message: str = Field(description="Human-readable status message.")
 
 
+class ProfileDetail(BaseModel):
+    """Nested profile object expected by the frontend."""
+
+    id: int = Field(description="User ID.")
+    email: EmailStr = Field(description="User's email address.")
+    first_name: str | None = Field(default=None, description="User's first name.")
+    last_name: str | None = Field(default=None, description="User's last name.")
+    name: str | None = Field(default=None, description="User's display name.")
+    bio: str | None = Field(default=None, description="Short biography.")
+    description: str | None = Field(default=None, description="Profile description.")
+    mobile_number: str | None = Field(
+        default=None, description="User's mobile number."
+    )
+    address: str | None = Field(default=None, description="User's address.")
+    profile_picture: str | None = Field(
+        default=None, description="URL of the profile picture."
+    )
+    link: str | None = Field(default=None, description="Profile picture or profile URL.")
+
+
 class ProfileResponse(BaseModel):
     """User profile details returned by GET/PUT /api/profile."""
 
@@ -79,6 +99,10 @@ class ProfileResponse(BaseModel):
     profile_picture: str | None = Field(
         default=None, description="URL of the profile picture."
     )
+    name: str | None = Field(default=None, description="User's display name.")
+    description: str | None = Field(default=None, description="Profile description.")
+    link: str | None = Field(default=None, description="Profile picture or profile URL.")
+    profile: ProfileDetail = Field(description="Nested profile object for the frontend.")
 
 
 class ProfileUpdateRequest(BaseModel):
@@ -109,3 +133,4 @@ class ErrorResponse(BaseModel):
     """Standard error envelope returned for all error responses."""
 
     detail: str = Field(description="Human-readable error description.")
+    error: str = Field(description="Error message for frontend clients.")

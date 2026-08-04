@@ -2,11 +2,31 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.schema import ProfileResponse, ProfileUpdateRequest
+from models.schema import ProfileDetail, ProfileResponse, ProfileUpdateRequest
 from models.user import User
 
 
+def _display_name(user: User) -> str | None:
+    parts = [user.first_name, user.last_name]
+    name = " ".join(part for part in parts if part)
+    return name or None
+
+
 def _user_to_profile(user: User) -> ProfileResponse:
+    name = _display_name(user)
+    detail = ProfileDetail(
+        id=user.id,
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        mobile_number=user.mobile_number,
+        bio=user.bio,
+        address=user.address,
+        profile_picture=user.profile_picture,
+        name=name,
+        description=user.bio,
+        link=user.profile_picture,
+    )
     return ProfileResponse(
         id=user.id,
         first_name=user.first_name,
@@ -16,6 +36,10 @@ def _user_to_profile(user: User) -> ProfileResponse:
         bio=user.bio,
         address=user.address,
         profile_picture=user.profile_picture,
+        name=name,
+        description=user.bio,
+        link=user.profile_picture,
+        profile=detail,
     )
 
 
