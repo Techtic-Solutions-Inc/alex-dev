@@ -1,6 +1,13 @@
 import asyncio
 import os
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+# Support uvicorn entrypoints like `src.main:app` as well as `--app-dir src`.
+_src_dir = Path(__file__).resolve().parent
+if str(_src_dir) not in sys.path:
+    sys.path.insert(0, str(_src_dir))
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
