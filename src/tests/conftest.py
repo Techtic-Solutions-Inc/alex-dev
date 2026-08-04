@@ -17,11 +17,11 @@ os.environ.setdefault("AUTO_MIGRATE", "false")
 os.environ.setdefault("SENDGRID_API_KEY", "test-sendgrid-key")
 os.environ.setdefault("SENDGRID_FROM_EMAIL", "noreply@test.com")
 
-from api.middlewares.rate_limiter import limiter  # noqa: E402
-from config.database import get_db_session, normalize_database_url  # noqa: E402
-from config.migrations import ensure_migrations_at_head  # noqa: E402
-from main import app  # noqa: E402
-from models.user import User  # noqa: E402
+from api.middlewares.rate_limiter import limiter
+from config.database import get_db_session, normalize_database_url
+from config.migrations import ensure_migrations_at_head
+from main import app
+from models.user import User
 
 limiter.enabled = False
 

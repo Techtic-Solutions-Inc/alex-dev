@@ -21,7 +21,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from dotenv import load_dotenv  # noqa: E402
+from dotenv import load_dotenv
 
 load_dotenv(project_root / ".env")
 load_dotenv(project_root / "src" / ".env", override=False)
@@ -46,7 +46,6 @@ def _handle_error(action: str, exc: Exception) -> None:
 
 def cmd_upgrade(args: argparse.Namespace) -> None:
     from alembic import command
-
     from config.migrations import get_alembic_config, run_migrations
 
     _env_banner()

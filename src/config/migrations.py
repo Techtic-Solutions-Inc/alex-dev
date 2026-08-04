@@ -1,8 +1,6 @@
 import os
 from pathlib import Path
-from typing import Optional
 
-from alembic import command
 from alembic.config import Config
 from alembic.runtime.migration import MigrationContext
 from alembic.script import ScriptDirectory
@@ -10,6 +8,7 @@ from dotenv import load_dotenv
 from loguru import logger
 from sqlalchemy import create_engine, text
 
+from alembic import command
 from config.database import normalize_database_url
 
 
@@ -119,7 +118,7 @@ def downgrade_migrations(revision: str = "-1") -> None:
     logger.info("Database downgrade completed")
 
 
-def get_current_revision() -> Optional[str]:
+def get_current_revision() -> str | None:
     """Return the current migration revision applied to the database."""
     database_url = _get_database_url()
     sync_url = _get_sync_url(normalize_database_url(database_url) or database_url)
@@ -132,7 +131,7 @@ def get_current_revision() -> Optional[str]:
         engine.dispose()
 
 
-def get_head_revision() -> Optional[str]:
+def get_head_revision() -> str | None:
     """Return the latest revision available in the migration scripts."""
     alembic_cfg = get_alembic_config()
     script = ScriptDirectory.from_config(alembic_cfg)
@@ -158,7 +157,7 @@ def has_pending_migrations() -> bool:
 
 
 def _get_applied_revisions(
-    script: ScriptDirectory, current: Optional[str]
+    script: ScriptDirectory, current: str | None
 ) -> set[str]:
     """Walk from the current revision back to base to find all applied revisions."""
     applied: set[str] = set()

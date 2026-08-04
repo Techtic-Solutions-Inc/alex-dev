@@ -1,6 +1,7 @@
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch
+
 
 @pytest.mark.asyncio
 async def test_register_user_success(client: AsyncClient, mocker):

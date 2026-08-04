@@ -131,9 +131,8 @@ class TestConfirmEmail:
         with patch(
             "services.auth.decode_confirmation_token",
             return_value="missing@example.com",
-        ):
-            with pytest.raises(HTTPException) as exc_info:
-                await confirm_email("valid-token", db)
+        ), pytest.raises(HTTPException) as exc_info:
+            await confirm_email("valid-token", db)
 
         assert exc_info.value.status_code == 404
 

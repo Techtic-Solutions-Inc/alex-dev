@@ -5,16 +5,18 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
+
 project_root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(project_root / "src"))
 
-from dotenv import load_dotenv  # noqa: E402
-from models import Base  # noqa: E402
+from dotenv import load_dotenv
+
+from models import Base
 
 load_dotenv(project_root / ".env")
 load_dotenv(project_root / "src" / ".env")

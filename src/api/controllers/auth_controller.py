@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.services.registration_service import create_registered_user
 from models.schema import (
     ConfirmEmailResponse,
     LoginRequest,
@@ -7,7 +8,6 @@ from models.schema import (
     RegisterRequest,
     RegisterResponse,
 )
-from api.services.registration_service import create_registered_user
 from services.auth import confirm_email, login_user
 
 

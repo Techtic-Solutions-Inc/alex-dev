@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
+
 @pytest.mark.asyncio
 async def test_login_success(client: AsyncClient):
     response = await client.post('/auth/login', json={

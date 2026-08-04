@@ -11,9 +11,9 @@ from slowapi.middleware import SlowAPIMiddleware
 
 import config.logging  # noqa: F401
 from api.middlewares.error_handler import register_error_handlers
-from api.router import api_router
 from api.middlewares.logging import logging_middleware
 from api.middlewares.rate_limiter import limiter, rate_limit_exceeded_handler
+from api.router import api_router
 from config.migrations import (
     check_database_connectivity,
     get_current_revision,

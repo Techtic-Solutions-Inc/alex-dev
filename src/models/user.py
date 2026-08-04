@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Optional
 
 from sqlalchemy import Boolean, DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, MappedAsDataclass, mapped_column
@@ -18,18 +17,18 @@ class User(MappedAsDataclass, Base):
     is_confirmed: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False
     )
-    first_name: Mapped[Optional[str]] = mapped_column(
+    first_name: Mapped[str | None] = mapped_column(
         String(100), nullable=True, default=None
     )
-    last_name: Mapped[Optional[str]] = mapped_column(
+    last_name: Mapped[str | None] = mapped_column(
         String(100), nullable=True, default=None
     )
-    mobile_number: Mapped[Optional[str]] = mapped_column(
+    mobile_number: Mapped[str | None] = mapped_column(
         String(20), nullable=True, default=None
     )
-    bio: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    address: Mapped[Optional[str]] = mapped_column(Text, nullable=True, default=None)
-    profile_picture: Mapped[Optional[str]] = mapped_column(
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    address: Mapped[str | None] = mapped_column(Text, nullable=True, default=None)
+    profile_picture: Mapped[str | None] = mapped_column(
         String(500), nullable=True, default=None
     )
     created_at: Mapped[datetime] = mapped_column(

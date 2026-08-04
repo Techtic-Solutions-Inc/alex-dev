@@ -4,9 +4,6 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.user import User
-from utils.token import generate_session_token
-
 STRONG_PASSWORD = "StrongPass1!"
 PROFILE_URL = "/api/profile"
 
