@@ -39,11 +39,11 @@ for _pkg in ("psycopg2-binary", "bcrypt", "PyJWT"):
                 ]
             )
 
-import bcrypt  # noqa: E402
-import httpx  # noqa: E402
-import jwt  # noqa: E402
-import psycopg2  # noqa: E402
-import psycopg2.extras  # noqa: E402
+import bcrypt
+import httpx
+import jwt
+import psycopg2
+import psycopg2.extras
 
 # ── configuration ─────────────────────────────────────────────────────────────
 BASE_URL = "http://localhost:51971"
