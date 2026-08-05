@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest_asyncio
 from dotenv import load_dotenv
-from httpx import ASGITransport, AsyncClient
+from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
@@ -61,16 +61,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with session_factory() as session:
         yield session
 
-    app.dependency_overrides.pop(get_db_session, None)
-    await engine.dispose()
-
 @pytest_asyncio.fixture(scope="function")
-async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+async def async_client() -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(app=app, base_url="http://test") as client:
         yield client
-
-@pytest_asyncio.fixture(scope="function")
-async def client(async_client: AsyncClient) -> AsyncGenerator[AsyncClient, None]:
-    """Alias used by integration tests."""
-    yield async_client
