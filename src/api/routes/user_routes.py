@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.services.user_service import get_users_summary
+from api.services.user_service import get_users_summary as fetch_users_summary
 from config.database import get_db_session
 from models.schema import ErrorResponse, UsersSummaryResponse
 
@@ -27,4 +27,4 @@ async def get_users_summary(
     db: AsyncSession = Depends(get_db_session),
 ) -> UsersSummaryResponse:
     """Return the total number of registered users and the count of active users."""
-    return await get_users_summary(db)
+    return await fetch_users_summary(db)
