@@ -16,10 +16,10 @@ load_dotenv(PROJECT_ROOT / ".env.test", override=True)
 load_dotenv(PROJECT_ROOT / ".env", override=False)
 os.environ.setdefault("AUTO_MIGRATE", "false")
 
+from api.middlewares.rate_limiter import limiter
 from config.database import get_db_session, normalize_database_url
 from config.migrations import ensure_migrations_at_head
 from main import app
-from api.middlewares.rate_limiter import limiter
 
 DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL") or os.getenv("DB_URL"))
 if not DATABASE_URL:
