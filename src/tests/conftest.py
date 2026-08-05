@@ -6,7 +6,8 @@ from pathlib import Path
 
 import pytest_asyncio
 from dotenv import load_dotenv
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -18,11 +19,18 @@ os.environ.setdefault("AUTO_MIGRATE", "false")
 from config.database import get_db_session, normalize_database_url
 from config.migrations import ensure_migrations_at_head
 from main import app
-from models.user import User
+from api.middlewares.rate_limiter import limiter
 
 DATABASE_URL = normalize_database_url(os.getenv("DATABASE_URL") or os.getenv("DB_URL"))
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not configured for tests")
+
+limiter.enabled = False
+
+@pytest_asyncio.fixture(scope="function", autouse=True)
+async def _reset_rate_limiter() -> AsyncGenerator[None, None]:
+    limiter.reset()
+    yield
 
 @pytest_asyncio.fixture(scope="function")
 async def db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -36,7 +44,7 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     )
 
     async with session_factory() as session:
-        await session.execute("DELETE FROM users;")
+        await session.execute(text("DELETE FROM users"))
         await session.commit()
 
     async def override_get_db_session() -> AsyncGenerator[AsyncSession, None]:
@@ -53,7 +61,16 @@ async def db_session() -> AsyncGenerator[AsyncSession, None]:
     async with session_factory() as session:
         yield session
 
+    app.dependency_overrides.pop(get_db_session, None)
+    await engine.dispose()
+
 @pytest_asyncio.fixture(scope="function")
-async def async_client() -> AsyncGenerator[AsyncClient, None]:
-    async with AsyncClient(app=app, base_url="http://test") as client:
+async def async_client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         yield client
+
+@pytest_asyncio.fixture(scope="function")
+async def client(async_client: AsyncClient) -> AsyncGenerator[AsyncClient, None]:
+    """Alias used by integration tests."""
+    yield async_client

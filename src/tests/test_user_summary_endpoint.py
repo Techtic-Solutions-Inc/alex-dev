@@ -2,16 +2,33 @@
 import pytest
 from httpx import AsyncClient
 
+from models.user import User
+from utils.password import hash_password
+
+STRONG_PASSWORD = "StrongPass1!"
+
 
 @pytest.mark.asyncio
 async def test_get_user_summary_happy_path(async_client: AsyncClient, db_session):
-    # Insert test data
-    await db_session.execute("""
-        INSERT INTO users (email, is_active) VALUES
-        ('active1@test.com', true),
-        ('active2@test.com', true),
-        ('inactive@test.com', false);
-    """)
+    db_session.add_all(
+        [
+            User(
+                email="active1@test.com",
+                hashed_password=hash_password(STRONG_PASSWORD),
+                is_active=True,
+            ),
+            User(
+                email="active2@test.com",
+                hashed_password=hash_password(STRONG_PASSWORD),
+                is_active=True,
+            ),
+            User(
+                email="inactive@test.com",
+                hashed_password=hash_password(STRONG_PASSWORD),
+                is_active=False,
+            ),
+        ]
+    )
     await db_session.commit()
 
     response = await async_client.get("/api/users/summary")
