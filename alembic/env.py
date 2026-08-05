@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import os
 import sys
 from logging.config import fileConfig
@@ -29,8 +28,6 @@ if config.config_file_name is not None:
 
 target_metadata = Base.metadata
 
-log = logging.getLogger("alembic.env")
-
 
 def _normalize_database_url(url: str | None) -> str | None:
     """Ensure Alembic receives an async PostgreSQL driver URL."""
@@ -46,13 +43,12 @@ def _normalize_database_url(url: str | None) -> str | None:
 database_url = _normalize_database_url(
     os.getenv("DATABASE_URL") or os.getenv("DB_URL")
 )
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
-else:
-    log.warning(
-        "DATABASE_URL is not set. Falling back to sqlalchemy.url in alembic.ini. "
-        "Set DATABASE_URL or DB_URL in your environment or .env file."
+if not database_url:
+    raise RuntimeError(
+        "DATABASE_URL is not configured; cannot run migrations. "
+        "Set DATABASE_URL or DB_URL in .env, src/.env, or the environment."
     )
+config.set_main_option("sqlalchemy.url", database_url)
 
 
 def include_name(
