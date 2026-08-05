@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.services.user_service import get_users_summary
 from config.database import get_db_session
-from models.schema import UsersSummaryResponse, ErrorResponse
+from models.schema import ErrorResponse, UsersSummaryResponse
 
 router = APIRouter()
 
