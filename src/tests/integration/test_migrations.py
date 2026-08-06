@@ -1,31 +1,38 @@
+"""Integration tests for Alembic database migrations."""
 
 import pytest
 from alembic import command
 from alembic.config import Config
+from sqlalchemy import text
 
-@pytest.fixture(scope='module')
-def alembic_config():
+from src.config.database import engine
+
+
+@pytest.fixture(scope="module")
+def alembic_config() -> Config:
     config = Config("alembic.ini")
     config.set_main_option("script_location", "src/migrations")
     return config
 
 
-def test_initial_migration(alembic_config):
+def _users_table_exists() -> bool:
+    with engine.connect() as connection:
+        result = connection.execute(
+            text(
+                "SELECT table_name FROM information_schema.tables "
+                "WHERE table_schema = 'public' AND table_name = 'users'"
+            )
+        )
+        return result.fetchone() is not None
+
+
+def test_initial_migration(alembic_config: Config) -> None:
     command.upgrade(alembic_config, "head")
-    # Verify that the initial migration has been applied
-    # This can be done by checking the presence of tables or specific data
-    # For example, check if a specific table exists
-    from src.config.database import engine
-    with engine.connect() as connection:
-        result = connection.execute("SELECT table_name FROM information_schema.tables WHERE table_name='your_table_name'")
-        assert result.fetchone() is not None
+    assert _users_table_exists() is True
 
 
-def test_migration_rollback(alembic_config):
+def test_migration_rollback(alembic_config: Config) -> None:
     command.downgrade(alembic_config, "-1")
-    # Verify that the migration has been rolled back
-    # For example, check if a specific table no longer exists
-    from src.config.database import engine
-    with engine.connect() as connection:
-        result = connection.execute("SELECT table_name FROM information_schema.tables WHERE table_name='your_table_name'")
-        assert result.fetchone() is None
+    assert _users_table_exists() is False
+    command.upgrade(alembic_config, "head")
+    assert _users_table_exists() is True

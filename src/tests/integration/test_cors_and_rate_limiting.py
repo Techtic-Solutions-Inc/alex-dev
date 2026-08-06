@@ -1,3 +1,5 @@
+"""Integration tests for CORS and rate limiting middleware."""
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -18,14 +20,14 @@ def test_cors_configuration(client: TestClient) -> None:
         },
     )
     assert response.status_code == 200
-    assert "access-control-allow-origin" in response.headers
+    assert response.headers.get("access-control-allow-origin") == "*"
 
 
 def test_rate_limiting(client: TestClient) -> None:
     for _ in range(10):
-        response = client.get("/redoc")
+        response = client.get("/openapi.json")
         assert response.status_code == 200
 
-    response = client.get("/redoc")
+    response = client.get("/openapi.json")
     assert response.status_code == 429
-    assert response.json()["detail"] == "Rate limit exceeded"
+    assert response.json() == {"detail": "Rate limit exceeded"}

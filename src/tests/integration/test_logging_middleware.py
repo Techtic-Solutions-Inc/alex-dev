@@ -13,8 +13,8 @@ def client() -> TestClient:
 
 def test_logging_middleware(client: TestClient) -> None:
     with patch("src.middlewares.logging.logger.info") as mock_logger_info:
-        response = client.get("/openapi.json")
+        response = client.get("/health")
         assert response.status_code == 200
         mock_logger_info.assert_called_with(
-            "Request: GET /openapi.json - Response: 200"
+            "Request: GET /health - Response: 200"
         )

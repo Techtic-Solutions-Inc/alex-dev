@@ -1,4 +1,4 @@
-"""Authentication routes."
+"""Authentication routes."""
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -80,7 +80,7 @@ def login(
     request: LoginRequest,
     db: Session = Depends(get_db),
 ) -> dict[str, str | int]:
-    """Authenticate credentials and issue a JWT access token."
+    """Authenticate credentials and issue a JWT access token."""
     user = authenticate_user(db, request.username, request.password)
     if not user:
         raise HTTPException(

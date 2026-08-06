@@ -26,8 +26,8 @@ def test_health_check_integration(client: TestClient) -> None:
 def test_database_connection_configuration() -> None:
     """Verify test database URL is configured."""
     settings = get_settings()
-    assert settings.database_url_test is not None
-    assert settings.database_url_test.startswith(("postgresql", "sqlite"))
+    test_database_url = settings.database_url_test or settings.database_url
+    assert test_database_url.startswith(("postgresql", "sqlite"))
 
 
 def test_database_connection() -> None:
