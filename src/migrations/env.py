@@ -16,10 +16,9 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+import src.api.models  # noqa: F401
 from src.config.database import Base, to_sync_database_url
 from src.config.settings import get_settings
-
-import src.api.models  # noqa: F401
 
 config = context.config
 settings = get_settings()

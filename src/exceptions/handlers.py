@@ -6,7 +6,11 @@ from fastapi.responses import JSONResponse
 from loguru import logger
 
 from src.exceptions.http_exceptions import AppHTTPException
-from src.schemas.responses import ErrorResponse, ValidationErrorItem, ValidationErrorResponse
+from src.schemas.responses import (
+    ErrorResponse,
+    ValidationErrorItem,
+    ValidationErrorResponse,
+)
 
 
 def _build_error_response(

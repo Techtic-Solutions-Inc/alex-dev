@@ -35,4 +35,3 @@ class TimestampMixin:
 class BaseModelMixin(UUIDPrimaryKeyMixin, TimestampMixin):
     """Base mixin combining UUID primary key and timestamps."""
 
-    pass

@@ -16,15 +16,17 @@ if _env_test.exists():
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip())
 
-from main import app  # noqa: E402
-from main import limiter  # noqa: E402
-from src.api.models.user import User  # noqa: E402
-from src.config.test_database import (  # noqa: E402
+from main import (
+    app,
+    limiter,
+)
+from src.api.models.user import User
+from src.config.test_database import (
     TestSessionLocal,
     create_test_tables,
     drop_test_tables,
 )
-from src.utils.password import hash_password  # noqa: E402
+from src.utils.password import hash_password
 
 
 @pytest.fixture(autouse=True)
