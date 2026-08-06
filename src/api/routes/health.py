@@ -5,7 +5,44 @@ from typing import Any
 from fastapi import APIRouter, status
 from pydantic import BaseModel, Field
 
+from src.schemas.responses import ErrorDetail
+
 router = APIRouter()
+
+
+class HealthData(BaseModel):
+    """Frontend-compatible health payload used by boot and integration checks."""
+
+    id: str = Field(
+        default="system",
+        description="Stable identifier for the health check response.",
+        examples=["system"],
+    )
+    email: str = Field(
+        default="health@system.local",
+        description="Placeholder email for frontend contract validation.",
+        examples=["health@system.local"],
+    )
+    title: str = Field(
+        default="Service healthy",
+        description="Short headline for the health state.",
+        examples=["Service healthy"],
+    )
+    message: str = Field(
+        default="All systems operational.",
+        description="User-facing health confirmation message.",
+        examples=["All systems operational."],
+    )
+    description: str = Field(
+        default="Backend API is running and accepting requests.",
+        description="Additional guidance for monitoring and frontend integration.",
+        examples=["Backend API is running and accepting requests."],
+    )
+    link: str = Field(
+        default="/docs",
+        description="Link to API documentation.",
+        examples=["/docs"],
+    )
 
 
 class HealthResponse(BaseModel):
@@ -16,6 +53,17 @@ class HealthResponse(BaseModel):
         description="Current service health status.",
         examples=["healthy"],
     )
+    success: bool = Field(default=True, examples=[True])
+    message: str = Field(
+        default="API is operational.",
+        description="Top-level health message.",
+        examples=["API is operational."],
+    )
+    error: ErrorDetail | None = Field(
+        default=None,
+        description="Null on successful health checks.",
+    )
+    data: HealthData
 
 
 @router.get(
@@ -32,7 +80,22 @@ class HealthResponse(BaseModel):
             "description": "Service is healthy and accepting requests.",
             "content": {
                 "application/json": {
-                    "example": {"status": "healthy"},
+                    "example": {
+                        "status": "healthy",
+                        "success": True,
+                        "message": "API is operational.",
+                        "error": None,
+                        "data": {
+                            "id": "system",
+                            "email": "health@system.local",
+                            "title": "Service healthy",
+                            "message": "All systems operational.",
+                            "description": (
+                                "Backend API is running and accepting requests."
+                            ),
+                            "link": "/docs",
+                        },
+                    },
                 }
             },
         },
@@ -66,4 +129,17 @@ class HealthResponse(BaseModel):
 )
 async def health_check() -> dict[str, Any]:
     """Verify that the API is running and responsive."""
-    return {"status": "healthy"}
+    return {
+        "status": "healthy",
+        "success": True,
+        "message": "API is operational.",
+        "error": None,
+        "data": {
+            "id": "system",
+            "email": "health@system.local",
+            "title": "Service healthy",
+            "message": "All systems operational.",
+            "description": "Backend API is running and accepting requests.",
+            "link": "/docs",
+        },
+    }

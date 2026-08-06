@@ -20,7 +20,11 @@ def test_health_check_integration(client: TestClient) -> None:
     """Integration test for the health check endpoint."""
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "healthy"}
+    body = response.json()
+    assert body["status"] == "healthy"
+    assert body["success"] is True
+    assert body["data"]["link"] == "/docs"
+    assert body["data"]["title"] == "Service healthy"
 
 
 def test_database_connection_configuration() -> None:

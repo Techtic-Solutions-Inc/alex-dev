@@ -10,10 +10,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-from src.api.routes.auth import router as auth_router
-from src.api.routes.health import router as health_router
-from src.api.routes.signup import router as signup_router
+from src.api.routes import api_router
 from src.config.logging import logger
+from src.config.migrations import run_migrations
 from src.config.settings import get_settings
 from src.exceptions.handlers import register_exception_handlers
 from src.middlewares.auth import get_current_user
@@ -27,6 +26,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["10/minute"])
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     logger.info("Starting FastAPI application in {} mode", settings.environment)
+    run_migrations()
     yield
     logger.info("Shutting down FastAPI application")
 
@@ -71,9 +71,7 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
 
-    app.include_router(health_router, tags=["Health"])
-    app.include_router(auth_router, tags=["Authentication"])
-    app.include_router(signup_router, tags=["Authentication"])
+    app.include_router(api_router)
 
     @app.get(
         "/protected-endpoint",
