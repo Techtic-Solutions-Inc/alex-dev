@@ -1,0 +1,11 @@
+[tool.black]
+line-length = 88
+target-version = ["py311"]
+
+[tool.pytest.ini_options]
+testpaths = ["src/tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+markers = [
+    "integration: marks tests that require external services such as PostgreSQL",
+]
