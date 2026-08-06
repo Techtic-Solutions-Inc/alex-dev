@@ -10,7 +10,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 
-from src.api.routes import api_router
+from src.api.routes.auth import router as auth_router
+from src.api.routes.health import router as health_router
+from src.api.routes.signup import router as signup_router
 from src.config.logging import logger
 from src.config.settings import get_settings
 from src.exceptions.handlers import register_exception_handlers
@@ -69,7 +71,9 @@ def create_app() -> FastAPI:
 
     register_exception_handlers(app)
 
-    app.include_router(api_router)
+    app.include_router(health_router, tags=["Health"])
+    app.include_router(auth_router, tags=["Authentication"])
+    app.include_router(signup_router, tags=["Authentication"])
 
     @app.get(
         "/protected-endpoint",

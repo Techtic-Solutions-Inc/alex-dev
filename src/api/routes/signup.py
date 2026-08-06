@@ -20,7 +20,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/signup",
+    "/api/auth/signup",
     response_model=SignupSuccessResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Register a new user account",
@@ -166,7 +166,7 @@ def signup(
 
 
 @router.get(
-    "/confirm-email",
+    "/api/auth/confirm-email",
     response_model=ConfirmEmailSuccessResponse,
     status_code=status.HTTP_200_OK,
     summary="Confirm a user's email address",

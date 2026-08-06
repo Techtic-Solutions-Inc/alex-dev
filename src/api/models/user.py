@@ -23,6 +23,12 @@ class User(BaseModelMixin, Base):
         default=False,
         server_default="false",
     )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=True,
+        server_default="true",
+    )
     email_verification_token: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,

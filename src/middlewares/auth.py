@@ -12,7 +12,10 @@ from src.utils.token import decode_access_token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> str:
     """Retrieve the current authenticated user ID from the JWT token."""
     try:
         payload = decode_access_token(token)
@@ -22,6 +25,14 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> str:
                 status_code=401,
                 detail="Invalid authentication credentials",
             )
+
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is None or not user.is_active:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid authentication credentials",
+            )
+
         return user_id
     except HTTPException:
         raise
@@ -59,6 +70,12 @@ def get_current_user_record(
 
     user = db.query(User).filter(User.id == user_id).first()
     if user is None:
+        raise UnauthorizedError(
+            message="Invalid or expired token.",
+            code="UNAUTHORIZED",
+        )
+
+    if not user.is_active:
         raise UnauthorizedError(
             message="Invalid or expired token.",
             code="UNAUTHORIZED",

@@ -18,7 +18,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/login",
+    "/api/auth/login",
     response_model=LoginSuccessResponse,
     status_code=status.HTTP_200_OK,
     summary="Sign in with email and password",
@@ -176,7 +176,7 @@ def login(
 
 
 @router.get(
-    "/validate",
+    "/api/auth/validate",
     response_model=ValidateSessionSuccessResponse,
     status_code=status.HTTP_200_OK,
     summary="Validate the current user session",

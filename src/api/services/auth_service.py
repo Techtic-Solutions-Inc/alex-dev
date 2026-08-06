@@ -41,6 +41,12 @@ def login_user(
             code="INVALID_CREDENTIALS",
         )
 
+    if not user.is_active:
+        raise UnauthorizedError(
+            message="Invalid email or password.",
+            code="INVALID_CREDENTIALS",
+        )
+
     expires_in = (
         runtime_settings.effective_remember_me_jwt_expiry
         if remember_me
