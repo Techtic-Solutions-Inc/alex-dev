@@ -3,7 +3,10 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
-from src.api.services.user_service import confirm_user_email, create_user_with_confirmation
+from src.api.services.user_service import (
+    confirm_user_email,
+    create_user_with_confirmation,
+)
 from src.config.database import get_db
 from src.config.settings import get_settings
 from src.schemas.auth import (
