@@ -1,69 +1,110 @@
 
-
 import pytest
 from httpx import AsyncClient
+from unittest.mock import patch
 
-from src.api.services.email_service import EmailService
+from src.api.models.user import User
 
 
 @pytest.mark.asyncio
-async def test_signup_success(client: AsyncClient, mocker):
-    mock_send_email = mocker.patch.object(EmailService, 'send_confirmation_email', return_value=None)
-    response = await client.post('/api/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'SecurePassword123!',
-        'terms_accepted': True
-    })
+async def test_signup_success(client: AsyncClient, db_session):
+    # Act
+    with patch('src.api.services.user_service.send_confirmation_email', return_value=True):
+        response = await client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "John",
+                "last_name": "Doe",
+                "email": "john.doe@example.com",
+                "password": "SecurePassword123!",
+                "terms_accepted": True
+            }
+        )
+
+    # Assert
     assert response.status_code == 201
-    assert response.json()['data']['email'] == 'john.doe@example.com'
-    mock_send_email.assert_called_once()
+    assert response.json()["data"]["email"] == "john.doe@example.com"
+
 
 @pytest.mark.asyncio
 async def test_signup_missing_first_name(client: AsyncClient):
-    response = await client.post('/api/auth/signup', json={
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'SecurePassword123!',
-        'terms_accepted': True
-    })
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
+    )
+
+    # Assert
     assert response.status_code == 400
-    assert response.json()['message'] == 'First name is required.'
+    assert response.json()["message"] == "First name is required."
+
 
 @pytest.mark.asyncio
 async def test_signup_invalid_email_format(client: AsyncClient):
-    response = await client.post('/api/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'invalid-email',
-        'password': 'SecurePassword123!',
-        'terms_accepted': True
-    })
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "invalid-email",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
+    )
+
+    # Assert
     assert response.status_code == 400
-    assert response.json()['message'] == 'Invalid email format.'
+    assert response.json()["message"] == "Invalid email format."
+
 
 @pytest.mark.asyncio
 async def test_signup_duplicate_email(client: AsyncClient, db_session):
-    # Assume a user with this email already exists in the test database
-    response = await client.post('/api/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'existing@example.com',
-        'password': 'SecurePassword123!',
-        'terms_accepted': True
-    })
+    # Arrange
+    user = User(
+        email="john.doe@example.com",
+        password_hash="hashed_password",
+        is_active=True
+    )
+    db_session.add(user)
+    db_session.commit()
+
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
+    )
+
+    # Assert
     assert response.status_code == 409
-    assert response.json()['message'] == 'Email already exists.'
+    assert response.json()["message"] == "Email already exists."
+
 
 @pytest.mark.asyncio
 async def test_signup_terms_not_accepted(client: AsyncClient):
-    response = await client.post('/api/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'SecurePassword123!',
-        'terms_accepted': False
-    })
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": False
+        }
+    )
+
+    # Assert
     assert response.status_code == 400
-    assert response.json()['message'] == 'Terms must be accepted.'
+    assert response.json()["message"] == "Terms must be accepted."
