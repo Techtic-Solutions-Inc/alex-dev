@@ -4,10 +4,11 @@ from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
 from src.api.models.user import User
-from src.api.services.auth0_service import get_auth0_service
+from src.api.services.auth0_service import Auth0AuthenticationService
 from src.api.services.auth_service import (
     build_login_response_data,
     build_session_response_data,
+    get_auth0_service_dependency,
     login_user,
 )
 from src.config.database import get_db
@@ -243,13 +244,18 @@ def _session_payload(current_user: User) -> dict:
     }
 
 
-def _perform_login(request: LoginRequest, db: Session) -> dict:
+def _perform_login(
+    request: LoginRequest,
+    db: Session,
+    auth0_service: Auth0AuthenticationService,
+) -> dict:
     """Authenticate credentials and issue a JWT access token."""
     user, expires_in = login_user(
         db,
         email=request.email,
         password=request.password,
         remember_me=request.remember_me,
+        auth0_service=auth0_service,
     )
 
     token = generate_access_token(
@@ -293,9 +299,10 @@ def _perform_login(request: LoginRequest, db: Session) -> dict:
 def login(
     request: LoginRequest,
     db: Session = Depends(get_db),
+    auth0_service: Auth0AuthenticationService = Depends(get_auth0_service_dependency),
 ) -> dict:
     """Authenticate credentials and issue a JWT access token."""
-    return _perform_login(request, db)
+    return _perform_login(request, db, auth0_service)
 
 
 @router.post(
@@ -315,9 +322,10 @@ def login(
 def signin(
     request: LoginRequest,
     db: Session = Depends(get_db),
+    auth0_service: Auth0AuthenticationService = Depends(get_auth0_service_dependency),
 ) -> dict:
     """Frontend-compatible alias for the login endpoint."""
-    return _perform_login(request, db)
+    return _perform_login(request, db, auth0_service)
 
 
 @router.get(
@@ -412,10 +420,12 @@ def validate_session(
     },
     tags=["Authentication"],
 )
-async def auth0_webhook(request: Request) -> dict:
+async def auth0_webhook(
+    request: Request,
+    auth0_service: Auth0AuthenticationService = Depends(get_auth0_service_dependency),
+) -> dict:
     """Process Auth0 webhook events."""
     body = await request.body()
-    auth0_service = get_auth0_service()
     signature = request.headers.get("X-Auth0-Signature")
 
     if not auth0_service.verify_webhook_signature(body, signature):
