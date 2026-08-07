@@ -1,10 +1,10 @@
 
-import pytest
-from httpx import AsyncClient
 from unittest.mock import patch
 
+import pytest
+from httpx import AsyncClient
+
 from src.api.models.user import User
-from src.utils.token import generate_access_token
 
 
 @pytest.mark.asyncio

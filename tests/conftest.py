@@ -1,5 +1,4 @@
 
-import os
 from unittest.mock import patch
 
 import pytest
@@ -7,8 +6,12 @@ from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from main import app
-from src.config.test_database import TestSessionLocal, create_test_tables, drop_test_tables
 from src.api.models.user import User
+from src.config.test_database import (
+    TestSessionLocal,
+    create_test_tables,
+    drop_test_tables,
+)
 from src.utils.password import hash_password
 
 
