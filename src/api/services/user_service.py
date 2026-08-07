@@ -10,13 +10,19 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.api.models.user import User
-from src.api.services.email_service import send_confirmation_email
+from src.api.services.email_service import send_confirmation_email, send_email_verification_email
 from src.config.settings import Settings, get_settings
 from src.exceptions import BadRequestError, ConflictError, NotFoundError
 from src.utils.password import hash_password
 from src.utils.validation import normalize_email, validate_password_strength
 
-__all__ = ["confirm_user_email", "create_user_with_confirmation", "validate_signup_required_fields"]
+__all__ = [
+    "confirm_user_email",
+    "create_user_with_confirmation",
+    "request_email_verification",
+    "validate_email_verification_request_fields",
+    "validate_signup_required_fields",
+]
 
 
 def validate_signup_required_fields(body: object) -> None:
@@ -159,6 +165,70 @@ def create_user_with_confirmation(
         settings=runtime_settings,
     )
     return user, confirmation_link
+
+
+def validate_email_verification_request_fields(body: object) -> None:
+    """Validate email verification fields and raise 400 for missing or invalid values."""
+    if not isinstance(body, dict):
+        raise BadRequestError(
+            message="Invalid request body.",
+            code="INVALID_REQUEST_BODY",
+        )
+
+    if body.get("terms_accepted") is not True:
+        raise BadRequestError(
+            message="You must accept the Terms of Use and Privacy Policy.",
+            code="TERMS_NOT_ACCEPTED",
+            details={"field": "terms_accepted"},
+        )
+
+
+def request_email_verification(
+    db: Session,
+    *,
+    email: str,
+    settings: Settings | None = None,
+) -> tuple[User, str]:
+    """Regenerate a verification token and send a verification email."""
+    runtime_settings = settings or get_settings()
+
+    try:
+        normalized_email = normalize_email(email)
+    except ValueError as exc:
+        raise BadRequestError(
+            message="Invalid email format.",
+            code="INVALID_EMAIL",
+            details={"field": "email"},
+        ) from exc
+
+    user = db.query(User).filter(User.email == normalized_email).first()
+    if user is None:
+        raise NotFoundError(
+            message="No account was found for this email address.",
+            code="USER_NOT_FOUND",
+            details={"field": "email"},
+        )
+
+    if user.is_email_verified:
+        raise ConflictError(
+            message="An account with this email address already exists.",
+            code="EMAIL_ALREADY_EXISTS",
+            details={"field": "email"},
+        )
+
+    verification_token, token_expires_at = _create_verification_token(runtime_settings)
+    user.email_verification_token = verification_token
+    user.email_verification_token_expires_at = token_expires_at
+    db.commit()
+    db.refresh(user)
+
+    verification_link = send_email_verification_email(
+        recipient_email=user.email,
+        recipient_first_name=user.first_name,
+        verification_token=verification_token,
+        settings=runtime_settings,
+    )
+    return user, verification_link
 
 
 def confirm_user_email(db: Session, *, token: str) -> User:

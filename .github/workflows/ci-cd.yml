@@ -1,0 +1,263 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PYTHON_VERSION: "3.11"
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+  POSTGRES_DB: app_db
+  POSTGRES_TEST_DB: test_db
+  DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/app_db
+  DATABASE_URL_TEST: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+  JWT_SECRET: ci-test-jwt-secret
+  ENVIRONMENT: test
+  LOG_LEVEL: WARNING
+  APP_BASE_URL: http://localhost:8000
+  CONTAINER_NAME: fastapi-backend
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run Black
+        run: black --check main.py src/
+
+      - name: Run Flake8
+        run: flake8 .
+
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: lint
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Create test database
+        run: |
+          python - <<'PY'
+          import os
+          import time
+
+          import psycopg2
+          from psycopg2 import OperationalError
+
+          params = {
+              "host": "localhost",
+              "user": os.environ["POSTGRES_USER"],
+              "password": os.environ["POSTGRES_PASSWORD"],
+              "dbname": os.environ["POSTGRES_DB"],
+          }
+          test_db = os.environ["POSTGRES_TEST_DB"]
+
+          for _ in range(30):
+              try:
+                  conn = psycopg2.connect(**params)
+                  break
+              except OperationalError:
+                  time.sleep(1)
+          else:
+              raise SystemExit("PostgreSQL service did not become ready in time")
+
+          conn.autocommit = True
+          with conn.cursor() as cursor:
+              cursor.execute(f'CREATE DATABASE "{test_db}"')
+          conn.close()
+          PY
+
+      - name: Run pytest
+        run: pytest src/tests -v --tb=short
+
+  build-docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    needs: test
+    outputs:
+      image-tag: ${{ steps.meta.outputs.image-tag }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set image metadata
+        id: meta
+        run: echo "image-tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: false
+          load: true
+          tags: |
+            fastapi-backend:${{ github.sha }}
+            fastapi-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify container health
+        run: |
+          docker network create smoke-net
+          docker run -d --name smoke-postgres --network smoke-net \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=app_db \
+            postgres:16-alpine
+          for attempt in $(seq 1 30); do
+            if docker exec smoke-postgres pg_isready -U postgres > /dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+          docker run -d --name app-smoke-test --network smoke-net \
+            -e DATABASE_URL=postgresql+asyncpg://postgres:postgres@smoke-postgres:5432/app_db \
+            -e JWT_SECRET=smoke-test-secret \
+            -e ENVIRONMENT=test \
+            -p 8000:8000 \
+            fastapi-backend:${{ github.sha }}
+          for attempt in $(seq 1 30); do
+            if curl -sf http://127.0.0.1:8000/health > /dev/null; then
+              echo "Health check passed"
+              docker stop app-smoke-test smoke-postgres
+              docker rm app-smoke-test smoke-postgres
+              docker network rm smoke-net
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Container failed health check"
+          docker logs app-smoke-test
+          docker stop app-smoke-test smoke-postgres || true
+          docker rm app-smoke-test smoke-postgres || true
+          docker network rm smoke-net || true
+          exit 1
+
+  publish-image:
+    name: Publish Docker Image
+    runs-on: ubuntu-latest
+    needs: build-docker
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY || 'fastapi-backend' }}:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY || 'fastapi-backend' }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to AWS ECS
+    runs-on: ubuntu-latest
+    needs: publish-image
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Render ECS task definition
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: deploy/ecs-task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY || 'fastapi-backend' }}:${{ github.sha }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ vars.ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true

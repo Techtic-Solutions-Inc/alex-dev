@@ -148,6 +148,86 @@ def register_exception_handlers(app: FastAPI) -> None:
                 },
             )
 
+        # Email verification ticket ACs require HTTP 400 for validation errors.
+        if path.endswith("/api/email/verify"):
+            first = exc.errors()[0] if exc.errors() else {}
+            loc = first.get("loc") or ()
+            field = next(
+                (str(part) for part in loc if part not in ("body",)),
+                "body",
+            )
+            msg = str(first.get("msg") or "Invalid value")
+            if msg.lower().startswith("value error,"):
+                msg = msg.split(",", 1)[1].strip()
+
+            code = "VALIDATION_ERROR"
+            message = msg
+            lowered = msg.lower()
+            if field == "email":
+                if "required" in lowered or "field required" in lowered:
+                    code, message = "EMPTY_EMAIL", "Email is required."
+                else:
+                    code, message = "INVALID_EMAIL", "Invalid email format."
+            elif field == "terms_accepted":
+                code, message = (
+                    "TERMS_NOT_ACCEPTED",
+                    "You must accept the Terms of Use and Privacy Policy.",
+                )
+
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=_build_error_response(
+                    message=message,
+                    code=code,
+                    details={"field": field},
+                ),
+            )
+
+        # Password recovery ticket ACs require HTTP 400 for validation errors.
+        if path.endswith("/api/password-recovery") or path.endswith(
+            "/api/password-recovery/reset"
+        ):
+            first = exc.errors()[0] if exc.errors() else {}
+            loc = first.get("loc") or ()
+            field = next(
+                (str(part) for part in loc if part not in ("body",)),
+                "body",
+            )
+            msg = str(first.get("msg") or "Invalid value")
+            if msg.lower().startswith("value error,"):
+                msg = msg.split(",", 1)[1].strip()
+
+            code = "VALIDATION_ERROR"
+            message = msg
+            lowered = msg.lower()
+            if field == "email":
+                if "required" in lowered or "field required" in lowered:
+                    code, message = "EMPTY_EMAIL", "Email is required."
+                else:
+                    code, message = "INVALID_EMAIL", "Invalid email format."
+            elif field == "password":
+                code = "WEAK_PASSWORD"
+                message = (
+                    "Password must be at least 8 characters long and include an "
+                    "uppercase letter, a number, and a special character."
+                )
+            elif field == "terms_accepted":
+                code, message = (
+                    "TERMS_NOT_ACCEPTED",
+                    "You must accept the Terms of Use and Privacy Policy.",
+                )
+            elif field == "token":
+                code, message = "INVALID_TOKEN", "A password reset token is required."
+
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=_build_error_response(
+                    message=message,
+                    code=code,
+                    details={"field": field},
+                ),
+            )
+
         validation_response = ValidationErrorResponse(errors=errors)
 
         return JSONResponse(

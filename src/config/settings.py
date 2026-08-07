@@ -38,10 +38,22 @@ class Settings(BaseSettings):
         default=None,
         alias="SENDGRID_CONFIRMATION_TEMPLATE_ID",
     )
+    sendgrid_email_verification_template_id: str | None = Field(
+        default=None,
+        alias="SENDGRID_EMAIL_VERIFICATION_TEMPLATE_ID",
+    )
+    sendgrid_password_reset_template_id: str | None = Field(
+        default=None,
+        alias="SENDGRID_PASSWORD_RESET_TEMPLATE_ID",
+    )
     app_base_url: str = Field(default="http://localhost:8000", alias="APP_BASE_URL")
     email_verification_token_expire_hours: int = Field(
         default=24,
         alias="EMAIL_VERIFICATION_TOKEN_EXPIRE_HOURS",
+    )
+    password_reset_token_expire_minutes: int = Field(
+        default=30,
+        alias="PASSWORD_RESET_TOKEN_EXPIRE_MINUTES",
     )
     remember_me_jwt_expiry_days: int = Field(
         default=30,
