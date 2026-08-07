@@ -19,6 +19,7 @@ def _build_confirmation_link(settings: Settings, token: str) -> str:
 def send_confirmation_email(
     *,
     recipient_email: str,
+    recipient_first_name: str,
     confirmation_token: str,
     settings: Settings | None = None,
 ) -> str:
@@ -42,6 +43,7 @@ def send_confirmation_email(
         to_emails=recipient_email,
         subject="Confirm your email address",
         html_content=(
+            f"<p>Hi {recipient_first_name},</p>"
             "<p>Thank you for signing up.</p>"
             f'<p><a href="{confirmation_link}">Confirm your email address</a></p>'
         ),
@@ -50,6 +52,7 @@ def send_confirmation_email(
     dynamic_template_data: dict[str, Any] = {
         "confirmation_link": confirmation_link,
         "email": recipient_email,
+        "first_name": recipient_first_name,
     }
     if runtime_settings.sendgrid_confirmation_template_id:
         message.template_id = runtime_settings.sendgrid_confirmation_template_id

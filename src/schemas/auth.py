@@ -64,6 +64,11 @@ class LoginResponseData(BaseModel):
         description="Optional navigation link for the authenticated session.",
         examples=["/dashboard"],
     )
+    redirect: str | None = Field(
+        default=None,
+        description="Post-authentication redirect path for the frontend router.",
+        examples=["/dashboard"],
+    )
 
 
 class LoginSuccessResponse(BaseModel):
@@ -77,8 +82,8 @@ class LoginSuccessResponse(BaseModel):
     data: LoginResponseData
 
 
-class ValidateSessionResponseData(BaseModel):
-    """Session validation data returned to the frontend."""
+class SessionResponseData(BaseModel):
+    """Current session data returned to the frontend."""
 
     id: str = Field(..., description="Unique identifier for the authenticated user.")
     email: str = Field(..., description="Authenticated email address.")
@@ -102,24 +107,49 @@ class ValidateSessionResponseData(BaseModel):
         description="Optional navigation link for the authenticated session.",
         examples=["/dashboard"],
     )
+    redirect: str | None = Field(
+        default=None,
+        description="Redirect path for the authenticated session.",
+        examples=["/dashboard"],
+    )
 
 
-class ValidateSessionSuccessResponse(BaseModel):
-    """Successful session validation response envelope."""
+ValidateSessionResponseData = SessionResponseData
+
+
+class SessionSuccessResponse(BaseModel):
+    """Successful session response envelope."""
 
     success: bool = Field(default=True, examples=[True])
     message: str = Field(..., examples=["Session is valid."])
-    data: ValidateSessionResponseData
+    data: SessionResponseData
+
+
+ValidateSessionSuccessResponse = SessionSuccessResponse
 
 
 class SignupRequest(BaseModel):
     """Payload for registering a new user account."""
 
+    first_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="User's first name.",
+        examples=["John"],
+    )
+    last_name: str = Field(
+        ...,
+        min_length=1,
+        max_length=100,
+        description="User's last name.",
+        examples=["Doe"],
+    )
     email: str = Field(
         ...,
         min_length=1,
         description="Email address for the new account.",
-        examples=["user@example.com"],
+        examples=["john.doe@example.com"],
     )
     password: str = Field(
         ...,
@@ -128,8 +158,25 @@ class SignupRequest(BaseModel):
             "Account password. Must be at least 8 characters and include an "
             "uppercase letter, a number, and a special character."
         ),
-        examples=["StrongPassword123!"],
+        examples=["SecurePassword123!"],
     )
+    terms_accepted: bool = Field(
+        ...,
+        description=(
+            "Must be true to indicate acceptance of the Terms of Use and "
+            "Privacy Policy."
+        ),
+        examples=[True],
+    )
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def validate_name_fields(cls, value: str) -> str:
+        """Ensure name fields are not blank."""
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("This field is required.")
+        return stripped
 
     @field_validator("password")
     @classmethod
@@ -153,6 +200,13 @@ class SignupResponseData(BaseModel):
 
     id: str = Field(..., description="Unique identifier for the created user.")
     email: str = Field(..., description="Registered email address.")
+    first_name: str = Field(..., description="Registered user's first name.")
+    last_name: str = Field(..., description="Registered user's last name.")
+    name: str = Field(
+        ...,
+        description="Full display name composed from first and last name.",
+        examples=["John Doe"],
+    )
     title: str = Field(
         ...,
         description="Short headline for the success state.",
@@ -175,6 +229,11 @@ class SignupResponseData(BaseModel):
         default=None,
         description="Email confirmation link when available in non-production flows.",
         examples=["http://localhost:8000/api/auth/confirm-email?token=abc123"],
+    )
+    redirect: str | None = Field(
+        default=None,
+        description="Optional post-registration redirect path for the frontend router.",
+        examples=["/sign-in"],
     )
 
 

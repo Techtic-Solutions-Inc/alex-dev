@@ -31,6 +31,7 @@ def test_login_success(client: TestClient, test_user: User) -> None:
         "Everything you need to create standout real estate content."
     )
     assert data["link"] == "/dashboard"
+    assert data["redirect"] == "/dashboard"
 
 
 def test_login_remember_me_extends_session(
@@ -182,6 +183,97 @@ def test_validate_session_accepts_valid_token(
     assert data["message"] == "Your session is active."
     assert data["description"] == "You are signed in to Agentwise."
     assert data["link"] == "/dashboard"
+    assert data["redirect"] == "/dashboard"
+
+
+def test_get_session_requires_auth(client: TestClient) -> None:
+    response = client.get("/api/auth/session")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
+
+
+def test_get_session_rejects_invalid_token(client: TestClient) -> None:
+    response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": "Bearer invalid-token"},
+    )
+    assert response.status_code == 401
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "UNAUTHORIZED"
+
+
+def test_get_session_accepts_valid_token(
+    client: TestClient,
+    test_user: User,
+) -> None:
+    login_response = client.post(
+        "/api/auth/login",
+        json={"email": "testuser@example.com", "password": "TestUser123!"},
+    )
+    assert login_response.status_code == 200
+    token = login_response.json()["data"]["access_token"]
+
+    response = client.get(
+        "/api/auth/session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Session is valid."
+    data = body["data"]
+    assert data["id"] == str(test_user.id)
+    assert data["email"] == "testuser@example.com"
+    assert data["title"] == "Session active"
+    assert data["message"] == "Your session is active."
+    assert data["description"] == "You are signed in to Agentwise."
+    assert data["link"] == "/dashboard"
+    assert data["redirect"] == "/dashboard"
+
+
+def test_login_with_auth0_enabled(
+    client: TestClient,
+    test_user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When Auth0 is configured, credentials are validated via Auth0 before login."""
+    from src.api.services import auth_service
+
+    class FakeAuth0:
+        is_enabled = True
+
+        def authenticate(self, email: str, password: str) -> dict:
+            assert email == "testuser@example.com"
+            assert password == "TestUser123!"
+            return {"access_token": "auth0-token"}
+
+    monkeypatch.setattr(
+        auth_service,
+        "get_auth0_service",
+        lambda settings=None: FakeAuth0(),
+    )
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "testuser@example.com", "password": "TestUser123!"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["access_token"]
+    assert body["data"]["email"] == "testuser@example.com"
+
+
+def test_auth0_webhook_accepts_valid_request(client: TestClient) -> None:
+    response = client.post(
+        "/api/auth/auth0/webhook",
+        json={"type": "user.created"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["received"] is True
 
 
 def test_protected_endpoint_requires_auth(client: TestClient) -> None:
@@ -221,11 +313,15 @@ def test_protected_endpoint_accepts_valid_token(
 def test_duplicate_user_email_conflict(db_session: Session) -> None:
     first = User(
         username="user_one",
+        first_name="User",
+        last_name="One",
         email="duplicate@example.com",
         password_hash=hash_password("Password123!"),
     )
     duplicate = User(
         username="user_two",
+        first_name="User",
+        last_name="Two",
         email="duplicate@example.com",
         password_hash=hash_password("Password123!"),
     )

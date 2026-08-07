@@ -74,6 +74,8 @@ def test_user(db_session: Session) -> User:
 
     user = User(
         username="testuser",
+        first_name="Test",
+        last_name="User",
         email="testuser@example.com",
         password_hash=hash_password("TestUser123!"),
     )

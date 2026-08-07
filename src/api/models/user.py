@@ -15,6 +15,8 @@ class User(BaseModelMixin, Base):
     __tablename__ = "users"
 
     username: Mapped[str] = mapped_column(String(50), nullable=False, unique=True)
+    first_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_email_verified: Mapped[bool] = mapped_column(

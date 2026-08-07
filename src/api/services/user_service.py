@@ -16,7 +16,39 @@ from src.exceptions import BadRequestError, ConflictError, NotFoundError
 from src.utils.password import hash_password
 from src.utils.validation import normalize_email, validate_password_strength
 
-__all__ = ["confirm_user_email", "create_user_with_confirmation"]
+__all__ = ["confirm_user_email", "create_user_with_confirmation", "validate_signup_required_fields"]
+
+
+def validate_signup_required_fields(body: object) -> None:
+    """Validate required signup fields and raise 400 for missing or invalid values."""
+    if not isinstance(body, dict):
+        raise BadRequestError(
+            message="Invalid request body.",
+            code="INVALID_REQUEST_BODY",
+        )
+
+    first_name = body.get("first_name")
+    if first_name is None or (isinstance(first_name, str) and not first_name.strip()):
+        raise BadRequestError(
+            message="First name is required.",
+            code="MISSING_FIRST_NAME",
+            details={"field": "first_name"},
+        )
+
+    last_name = body.get("last_name")
+    if last_name is None or (isinstance(last_name, str) and not last_name.strip()):
+        raise BadRequestError(
+            message="Last name is required.",
+            code="MISSING_LAST_NAME",
+            details={"field": "last_name"},
+        )
+
+    if body.get("terms_accepted") is not True:
+        raise BadRequestError(
+            message="You must accept the Terms of Use and Privacy Policy.",
+            code="TERMS_NOT_ACCEPTED",
+            details={"field": "terms_accepted"},
+        )
 
 
 def _generate_unique_username(db: Session, email: str) -> str:
@@ -45,12 +77,29 @@ def _create_verification_token(settings: Settings) -> tuple[str, datetime]:
 def create_user_with_confirmation(
     db: Session,
     *,
+    first_name: str,
+    last_name: str,
     email: str,
     password: str,
     settings: Settings | None = None,
 ) -> tuple[User, str]:
     """Register a user, persist credentials, and send a confirmation email."""
     runtime_settings = settings or get_settings()
+
+    normalized_first_name = first_name.strip()
+    normalized_last_name = last_name.strip()
+    if not normalized_first_name:
+        raise BadRequestError(
+            message="First name is required.",
+            code="MISSING_FIRST_NAME",
+            details={"field": "first_name"},
+        )
+    if not normalized_last_name:
+        raise BadRequestError(
+            message="Last name is required.",
+            code="MISSING_LAST_NAME",
+            details={"field": "last_name"},
+        )
 
     try:
         normalized_email = normalize_email(email)
@@ -80,6 +129,8 @@ def create_user_with_confirmation(
     verification_token, token_expires_at = _create_verification_token(runtime_settings)
     user = User(
         username=_generate_unique_username(db, normalized_email),
+        first_name=normalized_first_name,
+        last_name=normalized_last_name,
         email=normalized_email,
         password_hash=hash_password(password),
         is_email_verified=False,
@@ -102,6 +153,7 @@ def create_user_with_confirmation(
 
     confirmation_link = send_confirmation_email(
         recipient_email=user.email,
+        recipient_first_name=user.first_name,
         confirmation_token=verification_token,
         settings=runtime_settings,
     )

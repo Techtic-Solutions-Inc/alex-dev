@@ -19,3 +19,4 @@ black>=24.0.0
 pre-commit>=3.6.0
 sendgrid>=6.11.0
 email-validator>=2.1.0
+auth0-python>=4.7.0
