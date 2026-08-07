@@ -10,7 +10,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from src.api.models.user import User
-from src.api.services.email_service import send_confirmation_email, send_email_verification_email
+from src.api.services.email_service import (
+    send_confirmation_email,
+    send_email_verification_email,
+)
 from src.config.settings import Settings, get_settings
 from src.exceptions import BadRequestError, ConflictError, NotFoundError
 from src.utils.password import hash_password
