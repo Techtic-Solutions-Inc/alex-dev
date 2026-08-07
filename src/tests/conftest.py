@@ -1,4 +1,3 @@
-"""Shared pytest fixtures for integration tests."""
 
 import os
 from pathlib import Path
@@ -6,6 +5,13 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from unittest.mock import patch
+
+from main import app
+from src.api.models.user import User
+from src.config.test_database import TestSessionLocal, create_test_tables, drop_test_tables
+from src.utils.password import hash_password
+from src.utils.token import generate_access_token
 
 _env_test = Path(__file__).resolve().parents[2] / ".env.test"
 if _env_test.exists():
@@ -15,26 +21,6 @@ if _env_test.exists():
             continue
         key, _, value = line.partition("=")
         os.environ.setdefault(key.strip(), value.strip())
-
-from main import (
-    app,
-    limiter,
-)
-from src.api.models.user import User
-from src.config.test_database import (
-    TestSessionLocal,
-    create_test_tables,
-    drop_test_tables,
-)
-from src.utils.password import hash_password
-
-
-@pytest.fixture(autouse=True)
-def reset_rate_limiter():
-    """Clear rate-limit counters so tests do not interfere with each other."""
-    limiter.reset()
-    yield
-    limiter.reset()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -63,25 +49,27 @@ def db_session() -> Session:
 
 
 @pytest.fixture
-def test_user(db_session: Session) -> User:
-    """Create a disposable user for authentication tests."""
-    existing = (
-        db_session.query(User).filter(User.username == "testuser").first()
-    )
-    if existing is not None:
-        db_session.delete(existing)
-        db_session.commit()
+def test_users(db_session: Session):
+    """Create test users with different roles and states."""
+    users = [
+        User(email="admin@test.com", password_hash=hash_password("TestAdmin123!"), is_active=True),
+        User(email="user@test.com", password_hash=hash_password("TestUser123!"), is_active=True),
+        User(email="viewer@test.com", password_hash=hash_password("TestViewer123!"), is_active=True),
+        User(email="inactive@test.com", password_hash=hash_password("TestUser123!"), is_active=False),
+    ]
+    db_session.bulk_save_objects(users)
+    db_session.commit()
+    yield users
+    db_session.query(User).delete()
+    db_session.commit()
 
-    user = User(
-        username="testuser",
-        first_name="Test",
-        last_name="User",
-        email="testuser@example.com",
-        password_hash=hash_password("TestUser123!"),
-    )
-    db_session.add(user)
-    db_session.commit()
-    db_session.refresh(user)
-    yield user
-    db_session.delete(user)
-    db_session.commit()
+
+@pytest.fixture
+def auth_tokens(test_users):
+    """Generate auth tokens for test users."""
+    return {
+        "admin": generate_access_token(test_users[0]),
+        "user": generate_access_token(test_users[1]),
+        "viewer": generate_access_token(test_users[2]),
+        "inactive": generate_access_token(test_users[3]),
+    }

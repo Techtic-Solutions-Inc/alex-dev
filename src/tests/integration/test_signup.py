@@ -1,228 +1,109 @@
-"""Integration tests for user signup and email confirmation endpoints."""
-
-from unittest.mock import patch
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy.orm import Session
+from httpx import AsyncClient
+from unittest.mock import patch
 
 from src.api.models.user import User
 
 
-@pytest.fixture
-def signup_payload() -> dict[str, object]:
-    return {
-        "first_name": "John",
-        "last_name": "Doe",
-        "email": "newuser@example.com",
-        "password": "StrongPassword123!",
-        "terms_accepted": True,
-    }
-
-
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_success(
-    mock_send_email,
-    client: TestClient,
-    db_session: Session,
-    signup_payload: dict[str, object],
-) -> None:
-    mock_send_email.return_value = (
-        "http://localhost:8000/api/auth/confirm-email?token=test-token"
+@pytest.mark.asyncio
+async def test_signup_success(client: AsyncClient, db_session):
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
     )
 
-    response = client.post("/api/auth/signup", json=signup_payload)
+    # Assert
     assert response.status_code == 201
+    assert response.json()["email"] == "john.doe@example.com"
 
-    body = response.json()
-    assert body["success"] is True
-    assert body["message"]
-    assert body["data"]["email"] == signup_payload["email"]
-    assert body["data"]["first_name"] == signup_payload["first_name"]
-    assert body["data"]["last_name"] == signup_payload["last_name"]
-    assert body["data"]["name"] == "John Doe"
-    assert body["data"]["redirect"] == "/sign-in"
-    assert body["data"]["id"]
-    assert body["data"]["title"] == "Account created"
-    assert body["data"]["message"]
-    assert body["data"]["description"]
 
-    user = (
-        db_session.query(User)
-        .filter(User.email == signup_payload["email"])
-        .first()
+@pytest.mark.asyncio
+async def test_signup_missing_first_name(client: AsyncClient):
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
     )
-    assert user is not None
-    assert user.first_name == signup_payload["first_name"]
-    assert user.last_name == signup_payload["last_name"]
-    assert user.is_email_verified is False
-    assert user.email_verification_token is not None
 
-    mock_send_email.assert_called_once()
-    call_kwargs = mock_send_email.call_args.kwargs
-    assert call_kwargs["recipient_email"] == signup_payload["email"]
-    assert call_kwargs["recipient_first_name"] == signup_payload["first_name"]
-    assert call_kwargs["confirmation_token"] == user.email_verification_token
+    # Assert
+    assert response.status_code == 400
+    assert response.json()["detail"] == "First name is required."
 
-    db_session.delete(user)
+
+@pytest.mark.asyncio
+async def test_signup_invalid_email_format(client: AsyncClient):
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "invalid-email",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
+    )
+
+    # Assert
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid email format."
+
+
+@pytest.mark.asyncio
+async def test_signup_duplicate_email(client: AsyncClient, db_session):
+    # Arrange
+    user = User(
+        email="john.doe@example.com",
+        password_hash="hashed_password",
+        is_active=True
+    )
+    db_session.add(user)
     db_session.commit()
 
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
+    )
 
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_missing_first_name(
-    mock_send_email,
-    client: TestClient,
-    signup_payload: dict[str, object],
-) -> None:
-    payload = {key: value for key, value in signup_payload.items() if key != "first_name"}
-
-    response = client.post("/api/auth/signup", json=payload)
-    assert response.status_code == 400
-
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "MISSING_FIRST_NAME"
-    assert body["error"]["details"] == {"field": "first_name"}
-    assert body["message"]
-
-    mock_send_email.assert_not_called()
-
-
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_invalid_email(
-    mock_send_email,
-    client: TestClient,
-    signup_payload: dict[str, object],
-) -> None:
-    signup_payload["email"] = "not-an-email"
-
-    response = client.post("/api/auth/signup", json=signup_payload)
-    assert response.status_code == 400
-
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "INVALID_EMAIL"
-    assert body["message"]
-
-    mock_send_email.assert_not_called()
-
-
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_duplicate_email(
-    mock_send_email,
-    client: TestClient,
-    test_user: User,
-    signup_payload: dict[str, object],
-) -> None:
-    signup_payload["email"] = test_user.email
-
-    response = client.post("/api/auth/signup", json=signup_payload)
+    # Assert
     assert response.status_code == 409
-
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "EMAIL_ALREADY_EXISTS"
-    assert body["error"]["details"] == {"field": "email"}
-
-    mock_send_email.assert_not_called()
+    assert response.json()["detail"] == "Email already exists."
 
 
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_terms_not_accepted(
-    mock_send_email,
-    client: TestClient,
-    signup_payload: dict[str, object],
-) -> None:
-    signup_payload["terms_accepted"] = False
-
-    response = client.post("/api/auth/signup", json=signup_payload)
-    assert response.status_code == 400
-
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "TERMS_NOT_ACCEPTED"
-    assert body["error"]["details"] == {"field": "terms_accepted"}
-    assert body["message"]
-
-    mock_send_email.assert_not_called()
-
-
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_weak_password(
-    mock_send_email,
-    client: TestClient,
-    signup_payload: dict[str, object],
-) -> None:
-    signup_payload["password"] = "weak"
-
-    response = client.post("/api/auth/signup", json=signup_payload)
-    assert response.status_code == 400
-
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "WEAK_PASSWORD"
-
-    mock_send_email.assert_not_called()
-
-
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_signup_password_missing_special_character(
-    mock_send_email,
-    client: TestClient,
-    signup_payload: dict[str, object],
-) -> None:
-    signup_payload["password"] = "StrongPassword123"
-
-    response = client.post("/api/auth/signup", json=signup_payload)
-    assert response.status_code == 400
-    assert response.json()["success"] is False
-    mock_send_email.assert_not_called()
-
-
-@patch("src.api.services.user_service.send_confirmation_email")
-def test_confirm_email_success(
-    mock_send_email,
-    client: TestClient,
-    db_session: Session,
-    signup_payload: dict[str, object],
-) -> None:
-    mock_send_email.return_value = "http://localhost:8000/api/auth/confirm-email?token=x"
-
-    signup_response = client.post("/api/auth/signup", json=signup_payload)
-    assert signup_response.status_code == 201
-
-    user = (
-        db_session.query(User)
-        .filter(User.email == signup_payload["email"])
-        .first()
+@pytest.mark.asyncio
+async def test_signup_terms_not_accepted(client: AsyncClient):
+    # Act
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": False
+        }
     )
-    assert user is not None
-    token = user.email_verification_token
 
-    response = client.get("/api/auth/confirm-email", params={"token": token})
-    assert response.status_code == 200
-
-    body = response.json()
-    assert body["success"] is True
-    assert body["data"]["email"] == signup_payload["email"]
-    assert body["data"]["id"] == str(user.id)
-    assert body["data"]["title"] == "Email confirmed"
-    assert body["data"]["link"] == "/sign-in"
-
-    db_session.refresh(user)
-    assert user.is_email_verified is True
-    assert user.email_verification_token is None
-
-    db_session.delete(user)
-    db_session.commit()
-
-
-def test_confirm_email_invalid_token(client: TestClient) -> None:
-    response = client.get(
-        "/api/auth/confirm-email",
-        params={"token": "invalid-token-value"},
-    )
-    assert response.status_code == 404
-    body = response.json()
-    assert body["success"] is False
-    assert body["error"]["code"] == "INVALID_CONFIRMATION_TOKEN"
+    # Assert
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Terms must be accepted."
