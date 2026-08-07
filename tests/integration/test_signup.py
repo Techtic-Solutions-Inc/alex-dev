@@ -1,10 +1,10 @@
 
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch
 
-from main import app
 from src.api.services.email_service import EmailService
+
 
 @pytest.mark.asyncio
 async def test_signup_success(client: AsyncClient, mocker):

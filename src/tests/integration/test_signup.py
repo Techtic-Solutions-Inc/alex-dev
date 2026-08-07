@@ -6,7 +6,6 @@ from fastapi.testclient import TestClient
 
 from src.api.models.user import User
 
-
 VALID_SIGNUP_PAYLOAD = {
     "first_name": "John",
     "last_name": "Doe",

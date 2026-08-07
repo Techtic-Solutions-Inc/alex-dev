@@ -1,14 +1,17 @@
 
-import os
 import pytest
 from httpx import AsyncClient
 from sqlalchemy.orm import Session
-from unittest.mock import patch
 
 from main import app
-from src.config.test_database import TestSessionLocal, create_test_tables, drop_test_tables
 from src.api.models.user import User
+from src.config.test_database import (
+    TestSessionLocal,
+    create_test_tables,
+    drop_test_tables,
+)
 from src.utils.password import hash_password
+
 
 @pytest.fixture(scope='session', autouse=True)
 def setup_database():

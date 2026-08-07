@@ -1,10 +1,10 @@
 
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch
 
-from main import app
 from src.api.services.auth0_service import Auth0AuthenticationService
+
 
 @pytest.mark.asyncio
 async def test_login_success(client: AsyncClient, mocker):
