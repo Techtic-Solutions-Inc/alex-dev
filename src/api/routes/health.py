@@ -23,6 +23,14 @@ class HealthData(BaseModel):
         description="Placeholder email for frontend contract validation.",
         examples=["health@system.local"],
     )
+    password: str | None = Field(
+        default=None,
+        description=(
+            "Write-only placeholder for frontend/Figma contract validation; "
+            "always null in health responses."
+        ),
+        examples=[None],
+    )
     title: str = Field(
         default="Service healthy",
         description="Short headline for the health state.",
@@ -88,6 +96,7 @@ class HealthResponse(BaseModel):
                         "data": {
                             "id": "system",
                             "email": "health@system.local",
+                            "password": None,
                             "title": "Service healthy",
                             "message": "All systems operational.",
                             "description": (
@@ -137,6 +146,7 @@ async def health_check() -> dict[str, Any]:
         "data": {
             "id": "system",
             "email": "health@system.local",
+            "password": None,
             "title": "Service healthy",
             "message": "All systems operational.",
             "description": "Backend API is running and accepting requests.",
