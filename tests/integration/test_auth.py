@@ -1,10 +1,10 @@
 
-from unittest.mock import patch
-
 import pytest
 from httpx import AsyncClient
+from unittest.mock import patch
 
 from src.api.models.user import User
+from src.utils.token import generate_access_token
 
 
 @pytest.mark.asyncio
@@ -18,8 +18,8 @@ async def test_login_success(client: AsyncClient, db_session):
     db_session.add(user)
     db_session.commit()
 
-    # Act
     with patch('src.api.services.auth0_service.Auth0AuthenticationService.authenticate', return_value=True):
+        # Act
         response = await client.post(
             "/api/auth/login",
             json={"email": "user@example.com", "password": "securePassword123"}
@@ -40,7 +40,7 @@ async def test_login_empty_fields(client: AsyncClient):
 
     # Assert
     assert response.status_code == 400
-    assert response.json()["message"] == "Email and password are required."
+    assert response.json()["message"] == "Email is required."
 
 
 @pytest.mark.asyncio
@@ -54,8 +54,8 @@ async def test_login_incorrect_password(client: AsyncClient, db_session):
     db_session.add(user)
     db_session.commit()
 
-    # Act
-    with patch('src.api.services.auth0_service.Auth0AuthenticationService.authenticate', side_effect=Exception("Incorrect password")):
+    with patch('src.api.services.auth0_service.Auth0AuthenticationService.authenticate', side_effect=Exception):
+        # Act
         response = await client.post(
             "/api/auth/login",
             json={"email": "user@example.com", "password": "wrongPassword"}
@@ -67,13 +67,13 @@ async def test_login_incorrect_password(client: AsyncClient, db_session):
 
 
 @pytest.mark.asyncio
-async def test_protected_route_without_token(client: AsyncClient):
+async def test_access_protected_route_without_token(client: AsyncClient):
     # Act
     response = await client.get("/api/auth/session")
 
     # Assert
     assert response.status_code == 403
-    assert response.json()["message"] == "Not authenticated"
+    assert response.json()["message"] == "Forbidden."
 
 
 @pytest.mark.asyncio
@@ -87,8 +87,8 @@ async def test_auth0_integration(client: AsyncClient, db_session):
     db_session.add(user)
     db_session.commit()
 
-    # Act
     with patch('src.api.services.auth0_service.Auth0AuthenticationService.authenticate', return_value=True):
+        # Act
         response = await client.post(
             "/api/auth/login",
             json={"email": "user@example.com", "password": "securePassword123"}

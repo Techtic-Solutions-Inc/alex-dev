@@ -1,8 +1,7 @@
 
-from unittest.mock import patch
-
 import pytest
 from httpx import AsyncClient
+from unittest.mock import patch
 
 from src.api.models.user import User
 
@@ -10,21 +9,20 @@ from src.api.models.user import User
 @pytest.mark.asyncio
 async def test_signup_success(client: AsyncClient, db_session):
     # Act
-    with patch('src.api.services.user_service.send_confirmation_email', return_value=True):
-        response = await client.post(
-            "/api/auth/signup",
-            json={
-                "first_name": "John",
-                "last_name": "Doe",
-                "email": "john.doe@example.com",
-                "password": "SecurePassword123!",
-                "terms_accepted": True
-            }
-        )
+    response = await client.post(
+        "/api/auth/signup",
+        json={
+            "first_name": "John",
+            "last_name": "Doe",
+            "email": "john.doe@example.com",
+            "password": "SecurePassword123!",
+            "terms_accepted": True
+        }
+    )
 
     # Assert
     assert response.status_code == 201
-    assert response.json()["data"]["email"] == "john.doe@example.com"
+    assert response.json()["email"] == "john.doe@example.com"
 
 
 @pytest.mark.asyncio

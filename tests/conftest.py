@@ -1,4 +1,5 @@
 
+import os
 from unittest.mock import patch
 
 import pytest
@@ -6,12 +7,8 @@ from httpx import AsyncClient
 from sqlalchemy.orm import Session
 
 from main import app
+from src.config.test_database import TestSessionLocal, create_test_tables, drop_test_tables
 from src.api.models.user import User
-from src.config.test_database import (
-    TestSessionLocal,
-    create_test_tables,
-    drop_test_tables,
-)
 from src.utils.password import hash_password
 
 
@@ -26,8 +23,7 @@ def setup_database():
 @pytest.fixture
 def client() -> AsyncClient:
     """Return a FastAPI test client."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
-        yield ac
+    return AsyncClient(app=app, base_url="http://test")
 
 
 @pytest.fixture
@@ -42,7 +38,7 @@ def db_session() -> Session:
 
 @pytest.fixture
 def test_users(db_session: Session):
-    """Create test users with different roles and states."""
+    """Create test users for authentication tests."""
     users = [
         User(email="admin@test.com", password_hash=hash_password("TestAdmin123!"), is_active=True),
         User(email="user@test.com", password_hash=hash_password("TestUser123!"), is_active=True),
@@ -58,6 +54,6 @@ def test_users(db_session: Session):
 
 @pytest.fixture
 def mock_auth0_service():
-    """Mock the Auth0 service for authentication."""
+    """Mock the Auth0 authentication service."""
     with patch('src.api.services.auth0_service.Auth0AuthenticationService.authenticate', return_value=True):
         yield
