@@ -1,4 +1,3 @@
-"""Shared pytest fixtures for integration tests."""
 
 import os
 from pathlib import Path
@@ -7,39 +6,23 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-_env_test = Path(__file__).resolve().parents[2] / ".env.test"
-if _env_test.exists():
-    for raw_line in _env_test.read_text(encoding="utf-8").splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip())
-
-from main import (
-    app,
-    limiter,
-)
+from main import app
+from src.config.test_database import TestSessionLocal, create_test_tables, drop_test_tables
 from src.api.models.user import User
-from src.config.test_database import (
-    TestSessionLocal,
-    create_test_tables,
-    drop_test_tables,
-)
 from src.utils.password import hash_password
 
+_env_test = Path(__file__).resolve().parents[2] / '.env.test'
+if _env_test.exists():
+    for raw_line in _env_test.read_text(encoding='utf-8').splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith('#'):
+            continue
+        key, _, value = line.partition('=')
+        os.environ.setdefault(key.strip(), value.strip())
 
-@pytest.fixture(autouse=True)
-def reset_rate_limiter():
-    """Clear rate-limit counters so tests do not interfere with each other."""
-    limiter.reset()
-    yield
-    limiter.reset()
 
-
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope='session', autouse=True)
 def setup_database():
-    """Create and tear down database tables for the test session."""
     create_test_tables()
     yield
     drop_test_tables()
@@ -47,14 +30,12 @@ def setup_database():
 
 @pytest.fixture
 def client() -> TestClient:
-    """Return a FastAPI test client."""
     with TestClient(app) as test_client:
         yield test_client
 
 
 @pytest.fixture
 def db_session() -> Session:
-    """Provide a database session bound to the test database."""
     session = TestSessionLocal()
     try:
         yield session
@@ -63,25 +44,23 @@ def db_session() -> Session:
 
 
 @pytest.fixture
-def test_user(db_session: Session) -> User:
-    """Create a disposable user for authentication tests."""
-    existing = (
-        db_session.query(User).filter(User.username == "testuser").first()
-    )
-    if existing is not None:
-        db_session.delete(existing)
-        db_session.commit()
-
-    user = User(
-        username="testuser",
-        first_name="Test",
-        last_name="User",
-        email="testuser@example.com",
-        password_hash=hash_password("TestUser123!"),
-    )
-    db_session.add(user)
+def test_users(db_session: Session):
+    users = [
+        {'email': 'admin@test.com', 'role': 'admin', 'password': 'TestAdmin123!'},
+        {'email': 'user@test.com', 'role': 'user', 'password': 'TestUser123!'},
+        {'email': 'viewer@test.com', 'role': 'viewer', 'password': 'TestViewer123!'},
+        {'email': 'inactive@test.com', 'role': 'user', 'is_active': False},
+        {'email': 'newuser@test.com', 'role': 'user', 'password': 'NewUser123!'}
+    ]
+    for user_data in users:
+        user = User(
+            email=user_data['email'],
+            role=user_data['role'],
+            password_hash=hash_password(user_data['password']),
+            is_active=user_data.get('is_active', True)
+        )
+        db_session.add(user)
     db_session.commit()
-    db_session.refresh(user)
-    yield user
-    db_session.delete(user)
+    yield users
+    db_session.query(User).delete()
     db_session.commit()
