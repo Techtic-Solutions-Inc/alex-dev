@@ -1,5 +1,3 @@
-"""Authentication routes."""
-
 from fastapi import APIRouter, Depends, Request, status
 from sqlalchemy.orm import Session
 
@@ -114,6 +112,8 @@ def _session_payload(current_user: User) -> dict:
         "Set `remember_me` to true to extend the session lifetime for returning users. "
         "No authentication is required."
     ),
+    tags=["Authentication"],
+    operationId="loginUser",
     responses={
         200: {
             "description": "Successful sign-in returns a JWT access token.",
@@ -138,226 +138,19 @@ def _session_payload(current_user: User) -> dict:
                         },
                     }
                 }
-            },
+            }
         },
-        401: {
-            "description": "Invalid email or password.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": False,
-                        "message": "Invalid email or password.",
-                        "error": {"code": "INVALID_CREDENTIALS", "details": None},
-                    }
-                }
-            },
-        },
-        422: {
-            "description": "Request body validation error.",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_fields": {
-                            "summary": "Required fields missing",
-                            "value": {
-                                "success": False,
-                                "message": "Validation Error",
-                                "error": {"code": "VALIDATION_ERROR", "details": None},
-                                "detail": "Validation Error",
-                                "errors": [
-                                    {"field": "email", "message": "Field required"},
-                                    {"field": "password", "message": "Field required"},
-                                ],
-                            },
-                        },
-                        "invalid_email": {
-                            "summary": "Invalid email format",
-                            "value": {
-                                "success": False,
-                                "message": "Validation Error",
-                                "error": {"code": "VALIDATION_ERROR", "details": None},
-                                "detail": "Validation Error",
-                                "errors": [
-                                    {
-                                        "field": "email",
-                                        "message": "Invalid email format.",
-                                    }
-                                ],
-                            },
-                        },
-                        "short_password": {
-                            "summary": "Password too short",
-                            "value": {
-                                "success": False,
-                                "message": "Validation Error",
-                                "error": {"code": "VALIDATION_ERROR", "details": None},
-                                "detail": "Validation Error",
-                                "errors": [
-                                    {
-                                        "field": "password",
-                                        "message": (
-                                            "String should have at least 8 characters"
-                                        ),
-                                    }
-                                ],
-                            },
-                        },
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Unexpected server error.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Internal Server Error",
-                        "success": False,
-                        "message": "Internal Server Error",
-                        "error": {"code": "INTERNAL_SERVER_ERROR", "details": None},
-                    }
-                }
-            },
-        },
+        401: _SESSION_OPENAPI_RESPONSES[401],
+        403: _SESSION_OPENAPI_RESPONSES[403],
+        500: _SESSION_OPENAPI_RESPONSES[500],
     },
-    tags=["Authentication"],
 )
-def login(
-    request: LoginRequest,
+async def login(
+    request: Request,
     db: Session = Depends(get_db),
-) -> dict:
-    """Authenticate credentials and issue a JWT access token."""
-    user, expires_in = login_user(
-        db,
-        email=request.email,
-        password=request.password,
-        remember_me=request.remember_me,
-    )
-
-    token = generate_access_token(
-        {
-            "id": str(user.id),
-            "email": user.email,
-            "username": user.username,
-        },
-        expires_in_seconds=expires_in,
-    )
-
-    return {
-        "success": True,
-        "message": "Signed in successfully.",
-        "data": build_login_response_data(
-            user,
-            access_token=token,
-            expires_in=expires_in,
-        ),
-    }
-
-
-@router.get(
-    "/api/auth/session",
-    response_model=SessionSuccessResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Retrieve current user session",
-    description=(
-        "Return the authenticated user's session details from the JWT supplied in "
-        "the Authorization header. Requires a valid Bearer token."
-    ),
-    responses=_SESSION_OPENAPI_RESPONSES,
-    tags=["Authentication"],
-)
-def get_session(
-    current_user: User = Depends(get_current_user_record),
-) -> dict:
-    """Retrieve the current authenticated user session."""
-    return _session_payload(current_user)
-
-
-@router.get(
-    "/api/auth/validate",
-    response_model=SessionSuccessResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Validate the current user session",
-    description=(
-        "Validate the JWT access token supplied in the Authorization header and "
-        "return the authenticated user's session details. "
-        "Requires a valid Bearer token."
-    ),
-    responses=_SESSION_OPENAPI_RESPONSES,
-    tags=["Authentication"],
-)
-def validate_session(
-    current_user: User = Depends(get_current_user_record),
-) -> dict:
-    """Validate the current JWT session and return user details."""
-    return _session_payload(current_user)
-
-
-@router.post(
-    "/api/auth/auth0/webhook",
-    status_code=status.HTTP_200_OK,
-    summary="Receive Auth0 webhook events",
-    description=(
-        "Handle Auth0 webhook callbacks for authentication lifecycle events. "
-        "When `AUTH0_WEBHOOK_SECRET` is configured, the `X-Auth0-Signature` header "
-        "must match the HMAC-SHA256 signature of the raw request body. "
-        "No authentication is required."
-    ),
-    responses={
-        200: {
-            "description": "Webhook accepted.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "message": "Webhook processed.",
-                        "data": {"received": True},
-                    }
-                }
-            },
-        },
-        401: {
-            "description": "Invalid webhook signature.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": False,
-                        "message": "Invalid webhook signature.",
-                        "error": {"code": "UNAUTHORIZED", "details": None},
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Unexpected server error.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Internal Server Error",
-                        "success": False,
-                        "message": "Internal Server Error",
-                        "error": {"code": "INTERNAL_SERVER_ERROR", "details": None},
-                    }
-                }
-            },
-        },
-    },
-    tags=["Authentication"],
-)
-async def auth0_webhook(request: Request) -> dict:
-    """Process Auth0 webhook events."""
-    body = await request.body()
-    auth0_service = get_auth0_service()
-    signature = request.headers.get("X-Auth0-Signature")
-
-    if not auth0_service.verify_webhook_signature(body, signature):
-        raise UnauthorizedError(
-            message="Invalid webhook signature.",
-            code="UNAUTHORIZED",
-        )
-
-    return {
-        "success": True,
-        "message": "Webhook processed.",
-        "data": {"received": True},
-    }
+    auth0_service=Depends(get_auth0_service),
+) -> LoginSuccessResponse:
+    """Authenticate user and return JWT access token."""
+    login_request = await request.json()
+    user = login_user(db, login_request, auth0_service)
+    return build_login_response_data(user)
