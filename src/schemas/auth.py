@@ -178,6 +178,12 @@ class SignupRequest(BaseModel):
             raise ValueError("This field is required.")
         return stripped
 
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        """Ensure the email address has a valid format."""
+        return normalize_email(value)
+
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str) -> str:

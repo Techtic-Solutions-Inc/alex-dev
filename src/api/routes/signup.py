@@ -75,6 +75,11 @@ async def _parse_signup_request(request: Request) -> SignupRequest:
                 code="WEAK_PASSWORD",
                 details={"field": "password"},
             ) from exc
+        if field == "email":
+            raise BadRequestError(
+                message="Invalid email format.",
+                code="INVALID_EMAIL",
+            ) from exc
         raise BadRequestError(
             message=message,
             code="VALIDATION_ERROR",
