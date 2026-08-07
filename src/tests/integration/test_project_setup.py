@@ -38,8 +38,10 @@ def test_database_connection() -> None:
 def test_jwt_middleware_integration() -> None:
     client = TestClient(app)
     response = client.get("/protected-endpoint")
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.status_code == 403
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "FORBIDDEN"
 
 
 def test_global_error_handler() -> None:

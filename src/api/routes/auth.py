@@ -22,6 +22,145 @@ from src.utils.token import generate_access_token
 
 router = APIRouter()
 
+_LOGIN_OPENAPI_RESPONSES = {
+    201: {
+        "description": "Successful sign-in returns a JWT access token.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": True,
+                    "message": "Signed in successfully.",
+                    "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "email": "user@example.com",
+                        "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                        "token_type": "bearer",
+                        "expires_in": 3600,
+                        "title": "Welcome back",
+                        "message": "You have signed in successfully.",
+                        "description": (
+                            "Everything you need to create standout real estate content."
+                        ),
+                        "link": "/dashboard",
+                        "redirect": "/dashboard",
+                    },
+                }
+            }
+        },
+    },
+    400: {
+        "description": "Empty or invalid login fields.",
+        "content": {
+            "application/json": {
+                "examples": {
+                    "empty_email": {
+                        "summary": "Empty email",
+                        "value": {
+                            "success": False,
+                            "message": "Email is required.",
+                            "error": {
+                                "code": "EMPTY_EMAIL",
+                                "details": {"field": "email"},
+                            },
+                        },
+                    },
+                    "empty_password": {
+                        "summary": "Empty password",
+                        "value": {
+                            "success": False,
+                            "message": "Password is required.",
+                            "error": {
+                                "code": "EMPTY_PASSWORD",
+                                "details": {"field": "password"},
+                            },
+                        },
+                    },
+                    "invalid_email": {
+                        "summary": "Invalid email format",
+                        "value": {
+                            "success": False,
+                            "message": "Invalid email format.",
+                            "error": {
+                                "code": "INVALID_EMAIL",
+                                "details": {"field": "email"},
+                            },
+                        },
+                    },
+                }
+            }
+        },
+    },
+    401: {
+        "description": "Authentication service unavailable or unauthorized.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Authentication service is temporarily unavailable.",
+                    "error": {
+                        "code": "AUTHENTICATION_SERVICE_ERROR",
+                        "details": None,
+                    },
+                }
+            }
+        },
+    },
+    403: {
+        "description": "Forbidden.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "You do not have permission to perform this action.",
+                    "error": {"code": "FORBIDDEN", "details": None},
+                }
+            }
+        },
+    },
+    409: {
+        "description": "Incorrect email or password.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Incorrect email or password.",
+                    "error": {"code": "INCORRECT_PASSWORD", "details": None},
+                }
+            }
+        },
+    },
+    422: {
+        "description": "Request body validation error.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Validation Error",
+                    "error": {"code": "VALIDATION_ERROR", "details": None},
+                    "detail": "Validation Error",
+                    "errors": [
+                        {"field": "email", "message": "Field required"},
+                        {"field": "password", "message": "Field required"},
+                    ],
+                }
+            }
+        },
+    },
+    500: {
+        "description": "Unexpected server error.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "detail": "Internal Server Error",
+                    "success": False,
+                    "message": "Internal Server Error",
+                    "error": {"code": "INTERNAL_SERVER_ERROR", "details": None},
+                }
+            }
+        },
+    },
+}
+
 _SESSION_OPENAPI_RESPONSES = {
     200: {
         "description": "Session is valid.",
@@ -44,34 +183,37 @@ _SESSION_OPENAPI_RESPONSES = {
         },
     },
     401: {
-        "description": "Missing or invalid authentication token.",
+        "description": "Invalid or expired authentication token.",
         "content": {
             "application/json": {
-                "examples": {
-                    "not_authenticated": {
-                        "summary": "No token provided",
-                        "value": {"detail": "Not authenticated"},
-                    },
-                    "invalid_token": {
-                        "summary": "Invalid or expired token",
-                        "value": {
-                            "success": False,
-                            "message": "Invalid or expired token.",
-                            "error": {"code": "UNAUTHORIZED", "details": None},
-                        },
-                    },
+                "example": {
+                    "success": False,
+                    "message": "Invalid or expired token.",
+                    "error": {"code": "UNAUTHORIZED", "details": None},
                 }
             },
         },
     },
     403: {
-        "description": "Forbidden access to session information.",
+        "description": "Missing JWT token or forbidden access to session information.",
         "content": {
             "application/json": {
                 "example": {
                     "success": False,
-                    "message": "You do not have permission to perform this action.",
+                    "message": "Authentication is required to access this resource.",
                     "error": {"code": "FORBIDDEN", "details": None},
+                }
+            }
+        },
+    },
+    404: {
+        "description": "Authenticated user was not found.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "The requested resource was not found.",
+                    "error": {"code": "NOT_FOUND", "details": None},
                 }
             }
         },
@@ -101,131 +243,7 @@ def _session_payload(current_user: User) -> dict:
     }
 
 
-@router.post(
-    "/api/auth/login",
-    response_model=LoginSuccessResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Sign in with email and password",
-    description=(
-        "Authenticate a user with their email address and password. "
-        "When Auth0 is configured, credentials are validated against Auth0 before "
-        "issuing a local JWT access token. "
-        "Returns a JWT access token on success. "
-        "Set `remember_me` to true to extend the session lifetime for returning users. "
-        "No authentication is required."
-    ),
-    responses={
-        200: {
-            "description": "Successful sign-in returns a JWT access token.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "message": "Signed in successfully.",
-                        "data": {
-                            "id": "550e8400-e29b-41d4-a716-446655440000",
-                            "email": "user@example.com",
-                            "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-                            "token_type": "bearer",
-                            "expires_in": 3600,
-                            "title": "Welcome back",
-                            "message": "You have signed in successfully.",
-                            "description": (
-                                "Everything you need to create standout real estate content."
-                            ),
-                            "link": "/dashboard",
-                            "redirect": "/dashboard",
-                        },
-                    }
-                }
-            },
-        },
-        401: {
-            "description": "Invalid email or password.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": False,
-                        "message": "Invalid email or password.",
-                        "error": {"code": "INVALID_CREDENTIALS", "details": None},
-                    }
-                }
-            },
-        },
-        422: {
-            "description": "Request body validation error.",
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_fields": {
-                            "summary": "Required fields missing",
-                            "value": {
-                                "success": False,
-                                "message": "Validation Error",
-                                "error": {"code": "VALIDATION_ERROR", "details": None},
-                                "detail": "Validation Error",
-                                "errors": [
-                                    {"field": "email", "message": "Field required"},
-                                    {"field": "password", "message": "Field required"},
-                                ],
-                            },
-                        },
-                        "invalid_email": {
-                            "summary": "Invalid email format",
-                            "value": {
-                                "success": False,
-                                "message": "Validation Error",
-                                "error": {"code": "VALIDATION_ERROR", "details": None},
-                                "detail": "Validation Error",
-                                "errors": [
-                                    {
-                                        "field": "email",
-                                        "message": "Invalid email format.",
-                                    }
-                                ],
-                            },
-                        },
-                        "short_password": {
-                            "summary": "Password too short",
-                            "value": {
-                                "success": False,
-                                "message": "Validation Error",
-                                "error": {"code": "VALIDATION_ERROR", "details": None},
-                                "detail": "Validation Error",
-                                "errors": [
-                                    {
-                                        "field": "password",
-                                        "message": (
-                                            "String should have at least 8 characters"
-                                        ),
-                                    }
-                                ],
-                            },
-                        },
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Unexpected server error.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Internal Server Error",
-                        "success": False,
-                        "message": "Internal Server Error",
-                        "error": {"code": "INTERNAL_SERVER_ERROR", "details": None},
-                    }
-                }
-            },
-        },
-    },
-    tags=["Authentication"],
-)
-def login(
-    request: LoginRequest,
-    db: Session = Depends(get_db),
-) -> dict:
+def _perform_login(request: LoginRequest, db: Session) -> dict:
     """Authenticate credentials and issue a JWT access token."""
     user, expires_in = login_user(
         db,
@@ -254,6 +272,54 @@ def login(
     }
 
 
+@router.post(
+    "/api/auth/login",
+    response_model=LoginSuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Sign in with email and password",
+    description=(
+        "Authenticate a user with their email address and password. "
+        "When Auth0 is configured, credentials are validated against Auth0 before "
+        "issuing a local JWT access token. "
+        "Returns a JWT access token on success (HTTP 201). "
+        "Set `remember_me` to true to extend the session lifetime for returning users. "
+        "Empty email or password fields return HTTP 400. "
+        "Incorrect password attempts return HTTP 409. "
+        "No authentication is required."
+    ),
+    responses=_LOGIN_OPENAPI_RESPONSES,
+    tags=["Authentication"],
+)
+def login(
+    request: LoginRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Authenticate credentials and issue a JWT access token."""
+    return _perform_login(request, db)
+
+
+@router.post(
+    "/api/auth/signin",
+    response_model=LoginSuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Sign in with email and password (alias)",
+    description=(
+        "Alias of `POST /api/auth/login` for frontend Sign In form compatibility. "
+        "Authenticate a user with their email address and password and return a JWT "
+        "access token. Empty fields return HTTP 400; incorrect password returns "
+        "HTTP 409. No authentication is required."
+    ),
+    responses=_LOGIN_OPENAPI_RESPONSES,
+    tags=["Authentication"],
+)
+def signin(
+    request: LoginRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Frontend-compatible alias for the login endpoint."""
+    return _perform_login(request, db)
+
+
 @router.get(
     "/api/auth/session",
     response_model=SessionSuccessResponse,
@@ -261,7 +327,8 @@ def login(
     summary="Retrieve current user session",
     description=(
         "Return the authenticated user's session details from the JWT supplied in "
-        "the Authorization header. Requires a valid Bearer token."
+        "the Authorization header. Requires a valid Bearer token. "
+        "Missing tokens return HTTP 403; invalid or expired tokens return HTTP 401."
     ),
     responses=_SESSION_OPENAPI_RESPONSES,
     tags=["Authentication"],
@@ -281,7 +348,8 @@ def get_session(
     description=(
         "Validate the JWT access token supplied in the Authorization header and "
         "return the authenticated user's session details. "
-        "Requires a valid Bearer token."
+        "Requires a valid Bearer token. "
+        "Missing tokens return HTTP 403; invalid or expired tokens return HTTP 401."
     ),
     responses=_SESSION_OPENAPI_RESPONSES,
     tags=["Authentication"],

@@ -5,13 +5,20 @@ from sqlalchemy.orm import Session
 from src.api.models.user import User
 from src.api.services.auth0_service import Auth0AuthenticationService, get_auth0_service
 from src.config.settings import Settings, get_settings
-from src.exceptions import UnauthorizedError
+from src.exceptions import ConflictError
 from src.utils.password import verify_password
 from src.utils.validation import normalize_email
 
-__all__ = ["authenticate_user", "login_user"]
+__all__ = [
+    "authenticate_user",
+    "build_login_response_data",
+    "build_session_response_data",
+    "login_user",
+]
 
 _POST_LOGIN_REDIRECT = "/dashboard"
+_INCORRECT_PASSWORD_MESSAGE = "Incorrect email or password."
+_INCORRECT_PASSWORD_CODE = "INCORRECT_PASSWORD"
 
 
 def authenticate_user(db: Session, email: str, password: str) -> User | None:
@@ -28,22 +35,30 @@ def authenticate_user(db: Session, email: str, password: str) -> User | None:
 
 
 def _resolve_local_user(db: Session, email: str) -> User:
-    """Load an active local user record by email or raise UnauthorizedError."""
+    """Load an active local user record by email or raise ConflictError."""
     try:
         normalized_email = normalize_email(email)
     except ValueError as exc:
-        raise UnauthorizedError(
-            message="Invalid email or password.",
-            code="INVALID_CREDENTIALS",
+        raise ConflictError(
+            message=_INCORRECT_PASSWORD_MESSAGE,
+            code=_INCORRECT_PASSWORD_CODE,
         ) from exc
 
     user = db.query(User).filter(User.email == normalized_email).first()
     if user is None or not user.is_active:
-        raise UnauthorizedError(
-            message="Invalid email or password.",
-            code="INVALID_CREDENTIALS",
+        raise ConflictError(
+            message=_INCORRECT_PASSWORD_MESSAGE,
+            code=_INCORRECT_PASSWORD_CODE,
         )
     return user
+
+
+def _raise_incorrect_password() -> None:
+    """Raise the standard incorrect-password conflict error."""
+    raise ConflictError(
+        message=_INCORRECT_PASSWORD_MESSAGE,
+        code=_INCORRECT_PASSWORD_CODE,
+    )
 
 
 def login_user(
@@ -55,7 +70,11 @@ def login_user(
     settings: Settings | None = None,
     auth0_service: Auth0AuthenticationService | None = None,
 ) -> tuple[User, int]:
-    """Authenticate a user and return the user with token lifetime in seconds."""
+    """Authenticate a user and return the user with token lifetime in seconds.
+
+    When Auth0 is configured, credentials are validated against Auth0 first.
+    Incorrect password attempts return HTTP 409 with ``INCORRECT_PASSWORD``.
+    """
     runtime_settings = settings or get_settings()
     auth0 = auth0_service or get_auth0_service(runtime_settings)
 
@@ -63,17 +82,19 @@ def login_user(
         auth0.authenticate(email, password)
         user = _resolve_local_user(db, email)
     else:
-        user = authenticate_user(db, email, password)
-        if user is None:
-            raise UnauthorizedError(
-                message="Invalid email or password.",
-                code="INVALID_CREDENTIALS",
-            )
-        if not user.is_active:
-            raise UnauthorizedError(
-                message="Invalid email or password.",
-                code="INVALID_CREDENTIALS",
-            )
+        try:
+            normalized_email = normalize_email(email)
+        except ValueError as exc:
+            raise ConflictError(
+                message=_INCORRECT_PASSWORD_MESSAGE,
+                code=_INCORRECT_PASSWORD_CODE,
+            ) from exc
+
+        user = db.query(User).filter(User.email == normalized_email).first()
+        if user is None or not user.is_active:
+            _raise_incorrect_password()
+        if not verify_password(password, user.password_hash):
+            _raise_incorrect_password()
 
     expires_in = (
         runtime_settings.effective_remember_me_jwt_expiry

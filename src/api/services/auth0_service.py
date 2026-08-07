@@ -6,7 +6,7 @@ import httpx
 from loguru import logger
 
 from src.config.settings import Settings, get_settings
-from src.exceptions import UnauthorizedError
+from src.exceptions import ConflictError, UnauthorizedError
 
 __all__ = ["Auth0AuthenticationService", "get_auth0_service"]
 
@@ -61,9 +61,9 @@ class Auth0AuthenticationService:
             email,
             response.status_code,
         )
-        raise UnauthorizedError(
-            message="Invalid email or password.",
-            code="INVALID_CREDENTIALS",
+        raise ConflictError(
+            message="Incorrect email or password.",
+            code="INCORRECT_PASSWORD",
         )
 
     def verify_webhook_signature(

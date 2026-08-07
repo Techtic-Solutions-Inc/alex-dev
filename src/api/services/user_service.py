@@ -107,6 +107,7 @@ def create_user_with_confirmation(
         raise BadRequestError(
             message="Invalid email format.",
             code="INVALID_EMAIL",
+            details={"field": "email"},
         ) from exc
 
     try:

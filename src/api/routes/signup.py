@@ -1,9 +1,6 @@
 """User registration and email confirmation routes."""
 
-import json
-
-from fastapi import APIRouter, Depends, Query, Request, status
-from pydantic import ValidationError
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from src.api.services.user_service import (
@@ -13,7 +10,6 @@ from src.api.services.user_service import (
 )
 from src.config.database import get_db
 from src.config.settings import get_settings
-from src.exceptions import BadRequestError
 from src.schemas.auth import (
     ConfirmEmailSuccessResponse,
     SignupRequest,
@@ -50,41 +46,194 @@ def _build_signup_response(user, confirmation_link: str) -> dict:
     }
 
 
-async def _parse_signup_request(request: Request) -> SignupRequest:
-    """Parse and validate the signup request body."""
-    try:
-        raw_body = await request.body()
-        body = json.loads(raw_body) if raw_body else {}
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise BadRequestError(
-            message="Invalid request body.",
-            code="INVALID_REQUEST_BODY",
-        ) from exc
+_SIGNUP_OPENAPI_RESPONSES = {
+    201: {
+        "description": "User registered successfully.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": True,
+                    "message": (
+                        "Account created successfully. Please confirm your email."
+                    ),
+                    "data": {
+                        "id": "550e8400-e29b-41d4-a716-446655440000",
+                        "email": "john.doe@example.com",
+                        "first_name": "John",
+                        "last_name": "Doe",
+                        "name": "John Doe",
+                        "title": "Account created",
+                        "message": "Please check your email to confirm your account.",
+                        "description": (
+                            "We sent a confirmation email to your inbox. "
+                            "Click the link in that email to activate your account."
+                        ),
+                        "link": None,
+                        "redirect": "/sign-in",
+                    },
+                }
+            }
+        },
+    },
+    400: {
+        "description": (
+            "Invalid input such as missing name fields, invalid email format, "
+            "weak password, or terms not accepted."
+        ),
+        "content": {
+            "application/json": {
+                "examples": {
+                    "missing_first_name": {
+                        "summary": "Missing first name",
+                        "value": {
+                            "success": False,
+                            "message": "First name is required.",
+                            "error": {
+                                "code": "MISSING_FIRST_NAME",
+                                "details": {"field": "first_name"},
+                            },
+                        },
+                    },
+                    "invalid_email": {
+                        "summary": "Invalid email format",
+                        "value": {
+                            "success": False,
+                            "message": "Invalid email format.",
+                            "error": {
+                                "code": "INVALID_EMAIL",
+                                "details": {"field": "email"},
+                            },
+                        },
+                    },
+                    "weak_password": {
+                        "summary": "Password does not meet requirements",
+                        "value": {
+                            "success": False,
+                            "message": (
+                                "Password must be at least 8 characters long and "
+                                "include an uppercase letter, a number, and a "
+                                "special character."
+                            ),
+                            "error": {
+                                "code": "WEAK_PASSWORD",
+                                "details": {"field": "password"},
+                            },
+                        },
+                    },
+                    "terms_not_accepted": {
+                        "summary": "Terms of Use not accepted",
+                        "value": {
+                            "success": False,
+                            "message": (
+                                "You must accept the Terms of Use and Privacy Policy."
+                            ),
+                            "error": {
+                                "code": "TERMS_NOT_ACCEPTED",
+                                "details": {"field": "terms_accepted"},
+                            },
+                        },
+                    },
+                }
+            }
+        },
+    },
+    401: {
+        "description": "Not applicable — signup is a public endpoint.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Authentication is required to access this resource.",
+                    "error": {"code": "UNAUTHORIZED", "details": None},
+                }
+            }
+        },
+    },
+    403: {
+        "description": "Not applicable — signup is a public endpoint.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "You do not have permission to perform this action.",
+                    "error": {"code": "FORBIDDEN", "details": None},
+                }
+            }
+        },
+    },
+    404: {
+        "description": "Not applicable for user registration.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "The requested resource was not found.",
+                    "error": {"code": "NOT_FOUND", "details": None},
+                }
+            }
+        },
+    },
+    409: {
+        "description": "Email address is already registered.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "An account with this email address already exists.",
+                    "error": {
+                        "code": "EMAIL_ALREADY_EXISTS",
+                        "details": {"field": "email"},
+                    },
+                }
+            }
+        },
+    },
+    422: {
+        "description": "Request body validation error (malformed payload).",
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Validation Error",
+                    "error": {"code": "VALIDATION_ERROR", "details": None},
+                    "detail": "Validation Error",
+                    "errors": [
+                        {"field": "email", "message": "Field required"},
+                    ],
+                }
+            }
+        },
+    },
+    500: {
+        "description": "Unexpected server error.",
+        "content": {
+            "application/json": {
+                "example": {
+                    "detail": "Internal Server Error",
+                    "success": False,
+                    "message": "Internal Server Error",
+                    "error": {"code": "INTERNAL_SERVER_ERROR", "details": None},
+                }
+            }
+        },
+    },
+}
 
-    validate_signup_required_fields(body)
 
-    try:
-        return SignupRequest.model_validate(body)
-    except ValidationError as exc:
-        first_error = exc.errors()[0]
-        field = ".".join(str(part) for part in first_error.get("loc", ()))
-        message = first_error.get("msg", "Invalid value")
-        if field == "password":
-            raise BadRequestError(
-                message=message,
-                code="WEAK_PASSWORD",
-                details={"field": "password"},
-            ) from exc
-        if field == "email":
-            raise BadRequestError(
-                message="Invalid email format.",
-                code="INVALID_EMAIL",
-            ) from exc
-        raise BadRequestError(
-            message=message,
-            code="VALIDATION_ERROR",
-            details={"field": field or "body"},
-        ) from exc
+def _register_user(body: SignupRequest, db: Session) -> dict:
+    """Validate signup input, create the user, and return the success payload."""
+    # Business rule from ticket AC: terms must be explicitly accepted (400).
+    validate_signup_required_fields(body.model_dump())
+
+    user, confirmation_link = create_user_with_confirmation(
+        db,
+        first_name=body.first_name,
+        last_name=body.last_name,
+        email=body.email,
+        password=body.password,
+    )
+
+    return _build_signup_response(user, confirmation_link)
 
 
 @router.post(
@@ -97,161 +246,50 @@ async def _parse_signup_request(request: Request) -> SignupRequest:
         "password, and terms acceptance. The email must be unique and the password "
         "must meet strength requirements. Terms of Use and Privacy Policy must be "
         "accepted before registration. Upon successful registration, a confirmation "
-        "email is sent via SendGrid. No authentication is required."
+        "email is sent via SendGrid. No authentication is required.\n\n"
+        "**Request fields:** `first_name`, `last_name`, `email`, `password`, "
+        "`terms_accepted`.\n\n"
+        "**Success (201):** returns the created user id, email, name fields, and "
+        "UI guidance (`title`, `message`, `description`, `link`, `redirect`). "
+        "Password is write-only and never returned.\n\n"
+        "**Errors:** missing/invalid fields → 400 with stable codes "
+        "(`MISSING_FIRST_NAME`, `INVALID_EMAIL`, `WEAK_PASSWORD`, "
+        "`TERMS_NOT_ACCEPTED`); duplicate email → 409 (`EMAIL_ALREADY_EXISTS`)."
     ),
-    responses={
-        201: {
-            "description": "User registered successfully.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "message": (
-                            "Account created successfully. "
-                            "Please confirm your email."
-                        ),
-                        "data": {
-                            "id": "550e8400-e29b-41d4-a716-446655440000",
-                            "email": "john.doe@example.com",
-                            "first_name": "John",
-                            "last_name": "Doe",
-                            "name": "John Doe",
-                            "title": "Account created",
-                            "message": "Please check your email to confirm your account.",
-                            "description": (
-                                "We sent a confirmation email to your inbox. "
-                                "Click the link in that email to activate your account."
-                            ),
-                            "link": None,
-                            "redirect": "/sign-in",
-                        },
-                    }
-                }
-            },
-        },
-        400: {
-            "description": (
-                "Invalid input such as missing name fields, invalid email format, "
-                "weak password, or terms not accepted."
-            ),
-            "content": {
-                "application/json": {
-                    "examples": {
-                        "missing_first_name": {
-                            "summary": "Missing first name",
-                            "value": {
-                                "success": False,
-                                "message": "First name is required.",
-                                "error": {
-                                    "code": "MISSING_FIRST_NAME",
-                                    "details": {"field": "first_name"},
-                                },
-                            },
-                        },
-                        "invalid_email": {
-                            "summary": "Invalid email format",
-                            "value": {
-                                "success": False,
-                                "message": "Invalid email format.",
-                                "error": {"code": "INVALID_EMAIL", "details": None},
-                            },
-                        },
-                        "weak_password": {
-                            "summary": "Password does not meet requirements",
-                            "value": {
-                                "success": False,
-                                "message": (
-                                    "Password must be at least 8 characters long and "
-                                    "include an uppercase letter, a number, and a "
-                                    "special character."
-                                ),
-                                "error": {
-                                    "code": "WEAK_PASSWORD",
-                                    "details": {"field": "password"},
-                                },
-                            },
-                        },
-                        "terms_not_accepted": {
-                            "summary": "Terms of Use not accepted",
-                            "value": {
-                                "success": False,
-                                "message": (
-                                    "You must accept the Terms of Use and "
-                                    "Privacy Policy."
-                                ),
-                                "error": {
-                                    "code": "TERMS_NOT_ACCEPTED",
-                                    "details": {"field": "terms_accepted"},
-                                },
-                            },
-                        },
-                    }
-                }
-            },
-        },
-        409: {
-            "description": "Email address is already registered.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": False,
-                        "message": "An account with this email address already exists.",
-                        "error": {
-                            "code": "EMAIL_ALREADY_EXISTS",
-                            "details": {"field": "email"},
-                        },
-                    }
-                }
-            },
-        },
-        422: {
-            "description": "Request body validation error.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": False,
-                        "message": "Validation Error",
-                        "error": {"code": "VALIDATION_ERROR", "details": None},
-                        "detail": "Validation Error",
-                        "errors": [
-                            {"field": "email", "message": "Field required"},
-                        ],
-                    }
-                }
-            },
-        },
-        500: {
-            "description": "Unexpected server error.",
-            "content": {
-                "application/json": {
-                    "example": {
-                        "detail": "Internal Server Error",
-                        "success": False,
-                        "message": "Internal Server Error",
-                        "error": {"code": "INTERNAL_SERVER_ERROR", "details": None},
-                    }
-                }
-            },
-        },
-    },
+    responses=_SIGNUP_OPENAPI_RESPONSES,
     tags=["Authentication"],
 )
 async def signup(
-    request: Request,
+    body: SignupRequest,
     db: Session = Depends(get_db),
 ) -> dict:
-    """Register a new user and send a confirmation email."""
-    signup_request = await _parse_signup_request(request)
+    """Register a new user and send a confirmation email.
 
-    user, confirmation_link = create_user_with_confirmation(
-        db,
-        first_name=signup_request.first_name,
-        last_name=signup_request.last_name,
-        email=signup_request.email,
-        password=signup_request.password,
-    )
+    ``body: SignupRequest`` is required so OpenAPI/Swagger exposes every ticket
+    field (first_name, last_name, email, password, terms_accepted) in Try it out.
+    """
+    return _register_user(body, db)
 
-    return _build_signup_response(user, confirmation_link)
+
+@router.post(
+    "/api/signup",
+    response_model=SignupSuccessResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user account (alias)",
+    description=(
+        "Alias of `POST /api/auth/signup` for frontend Sign Up form compatibility "
+        "(FE ticket path). Same request body, validation rules, SendGrid confirmation "
+        "email, and response envelope. No authentication is required."
+    ),
+    responses=_SIGNUP_OPENAPI_RESPONSES,
+    tags=["Authentication"],
+)
+async def signup_alias(
+    body: SignupRequest,
+    db: Session = Depends(get_db),
+) -> dict:
+    """Frontend-compatible alias for the signup endpoint."""
+    return _register_user(body, db)
 
 
 @router.get(
@@ -311,6 +349,30 @@ async def signup(
                                 },
                             },
                         },
+                    }
+                }
+            },
+        },
+        401: {
+            "description": "Not applicable — email confirmation is a public endpoint.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "message": "Authentication is required to access this resource.",
+                        "error": {"code": "UNAUTHORIZED", "details": None},
+                    }
+                }
+            },
+        },
+        403: {
+            "description": "Not applicable — email confirmation is a public endpoint.",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "message": "You do not have permission to perform this action.",
+                        "error": {"code": "FORBIDDEN", "details": None},
                     }
                 }
             },

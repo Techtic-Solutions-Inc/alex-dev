@@ -60,6 +60,94 @@ def register_exception_handlers(app: FastAPI) -> None:
                 )
             )
 
+        path = request.url.path.rstrip("/")
+
+        # Signup ticket ACs require HTTP 400 (not FastAPI's default 422) with
+        # stable field codes so Swagger Try-it-out + FE error handling stay aligned.
+        # Covers both canonical `/api/auth/signup` and FE alias `/api/signup`.
+        if path.endswith("/api/auth/signup") or path.endswith("/api/signup"):
+            first = exc.errors()[0] if exc.errors() else {}
+            loc = first.get("loc") or ()
+            field = next(
+                (str(part) for part in loc if part not in ("body",)),
+                "body",
+            )
+            msg = str(first.get("msg") or "Invalid value")
+            # Pydantic may prefix custom validator messages with "Value error, ".
+            if msg.lower().startswith("value error,"):
+                msg = msg.split(",", 1)[1].strip()
+
+            code = "VALIDATION_ERROR"
+            message = msg
+            if field == "first_name":
+                code, message = "MISSING_FIRST_NAME", "First name is required."
+            elif field == "last_name":
+                code, message = "MISSING_LAST_NAME", "Last name is required."
+            elif field == "email":
+                code, message = "INVALID_EMAIL", "Invalid email format."
+            elif field == "password":
+                code = "WEAK_PASSWORD"
+                message = (
+                    "Password must be at least 8 characters long and include an "
+                    "uppercase letter, a number, and a special character."
+                )
+            elif field == "terms_accepted":
+                code, message = (
+                    "TERMS_NOT_ACCEPTED",
+                    "You must accept the Terms of Use and Privacy Policy.",
+                )
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content=_build_error_response(
+                    message=message,
+                    code=code,
+                    details={"field": field},
+                ),
+            )
+
+        # Login ticket ACs require HTTP 400 when email/password are empty or missing.
+        if path.endswith("/api/auth/login") or path.endswith("/api/auth/signin"):
+            first = exc.errors()[0] if exc.errors() else {}
+            loc = first.get("loc") or ()
+            field = next(
+                (str(part) for part in loc if part not in ("body",)),
+                "body",
+            )
+            msg = str(first.get("msg") or "Invalid value")
+            # Pydantic may prefix custom validator messages with "Value error, ".
+            if msg.lower().startswith("value error,"):
+                msg = msg.split(",", 1)[1].strip()
+
+            code = "VALIDATION_ERROR"
+            message = msg
+            lowered = msg.lower()
+            if field == "email":
+                if "required" in lowered or "field required" in lowered:
+                    code, message = "EMPTY_EMAIL", "Email is required."
+                else:
+                    code, message = "INVALID_EMAIL", "Invalid email format."
+            elif field == "password":
+                if "required" in lowered or "field required" in lowered:
+                    code, message = "EMPTY_PASSWORD", "Password is required."
+                else:
+                    code, message = "VALIDATION_ERROR", msg
+
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={
+                    **_build_error_response(
+                        message=message,
+                        code=code,
+                        details={"field": field},
+                    ),
+                    "detail": message,
+                    "errors": [
+                        {"field": item.field, "message": item.message}
+                        for item in errors
+                    ],
+                },
+            )
+
         validation_response = ValidationErrorResponse(errors=errors)
 
         return JSONResponse(

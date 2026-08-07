@@ -14,7 +14,7 @@ def test_login_success(client: TestClient, test_user: User) -> None:
         "/api/auth/login",
         json={"email": "testuser@example.com", "password": "TestUser123!"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     body = response.json()
     assert body["success"] is True
     assert body["message"] == "Signed in successfully."
@@ -34,6 +34,18 @@ def test_login_success(client: TestClient, test_user: User) -> None:
     assert data["redirect"] == "/dashboard"
 
 
+def test_signin_alias_success(client: TestClient, test_user: User) -> None:
+    response = client.post(
+        "/api/auth/signin",
+        json={"email": "testuser@example.com", "password": "TestUser123!"},
+    )
+    assert response.status_code == 201
+    body = response.json()
+    assert body["success"] is True
+    assert body["data"]["access_token"]
+    assert body["data"]["email"] == "testuser@example.com"
+
+
 def test_login_remember_me_extends_session(
     client: TestClient,
     test_user: User,
@@ -47,7 +59,7 @@ def test_login_remember_me_extends_session(
             "remember_me": True,
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     body = response.json()
     assert body["data"]["expires_in"] == settings.effective_remember_me_jwt_expiry
     assert body["data"]["expires_in"] > settings.effective_jwt_expiry
@@ -66,7 +78,7 @@ def test_login_without_remember_me_uses_default_expiry(
             "remember_me": False,
         },
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     assert response.json()["data"]["expires_in"] == settings.effective_jwt_expiry
 
 
@@ -75,11 +87,11 @@ def test_login_invalid_password(client: TestClient, test_user: User) -> None:
         "/api/auth/login",
         json={"email": "testuser@example.com", "password": "WrongPassword!"},
     )
-    assert response.status_code == 401
+    assert response.status_code == 409
     body = response.json()
     assert body["success"] is False
-    assert body["message"] == "Invalid email or password."
-    assert body["error"]["code"] == "INVALID_CREDENTIALS"
+    assert body["message"] == "Incorrect email or password."
+    assert body["error"]["code"] == "INCORRECT_PASSWORD"
 
 
 def test_login_unknown_user(client: TestClient) -> None:
@@ -87,20 +99,18 @@ def test_login_unknown_user(client: TestClient) -> None:
         "/api/auth/login",
         json={"email": "nobody@example.com", "password": "SomePassword1!"},
     )
-    assert response.status_code == 401
+    assert response.status_code == 409
     body = response.json()
     assert body["success"] is False
-    assert body["error"]["code"] == "INVALID_CREDENTIALS"
+    assert body["error"]["code"] == "INCORRECT_PASSWORD"
 
 
 def test_login_validation_missing_fields(client: TestClient) -> None:
     response = client.post("/api/auth/login", json={})
-    assert response.status_code == 422
+    assert response.status_code == 400
     body = response.json()
     assert body["success"] is False
-    assert body["message"] == "Validation Error"
-    assert body["error"]["code"] == "VALIDATION_ERROR"
-    assert body["detail"] == "Validation Error"
+    assert body["error"]["code"] in {"EMPTY_EMAIL", "EMPTY_PASSWORD", "VALIDATION_ERROR"}
     assert isinstance(body["errors"], list)
     assert len(body["errors"]) >= 2
 
@@ -110,10 +120,10 @@ def test_login_validation_empty_strings(client: TestClient) -> None:
         "/api/auth/login",
         json={"email": "", "password": ""},
     )
-    assert response.status_code == 422
+    assert response.status_code == 400
     body = response.json()
     assert body["success"] is False
-    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["code"] in {"EMPTY_EMAIL", "EMPTY_PASSWORD", "VALIDATION_ERROR"}
 
 
 def test_login_validation_invalid_email_format(client: TestClient) -> None:
@@ -121,10 +131,10 @@ def test_login_validation_invalid_email_format(client: TestClient) -> None:
         "/api/auth/login",
         json={"email": "not-an-email", "password": "ValidPass1!"},
     )
-    assert response.status_code == 422
+    assert response.status_code == 400
     body = response.json()
     assert body["success"] is False
-    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert body["error"]["code"] == "INVALID_EMAIL"
     assert any(error["field"] == "email" for error in body["errors"])
 
 
@@ -133,7 +143,7 @@ def test_login_validation_password_too_short(client: TestClient) -> None:
         "/api/auth/login",
         json={"email": "user@example.com", "password": "short"},
     )
-    assert response.status_code == 422
+    assert response.status_code == 400
     body = response.json()
     assert body["success"] is False
     assert body["error"]["code"] == "VALIDATION_ERROR"
@@ -142,8 +152,10 @@ def test_login_validation_password_too_short(client: TestClient) -> None:
 
 def test_validate_session_requires_auth(client: TestClient) -> None:
     response = client.get("/api/auth/validate")
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.status_code == 403
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "FORBIDDEN"
 
 
 def test_validate_session_rejects_invalid_token(client: TestClient) -> None:
@@ -165,7 +177,7 @@ def test_validate_session_accepts_valid_token(
         "/api/auth/login",
         json={"email": "testuser@example.com", "password": "TestUser123!"},
     )
-    assert login_response.status_code == 200
+    assert login_response.status_code == 201
     token = login_response.json()["data"]["access_token"]
 
     response = client.get(
@@ -188,8 +200,10 @@ def test_validate_session_accepts_valid_token(
 
 def test_get_session_requires_auth(client: TestClient) -> None:
     response = client.get("/api/auth/session")
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.status_code == 403
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "FORBIDDEN"
 
 
 def test_get_session_rejects_invalid_token(client: TestClient) -> None:
@@ -211,7 +225,7 @@ def test_get_session_accepts_valid_token(
         "/api/auth/login",
         json={"email": "testuser@example.com", "password": "TestUser123!"},
     )
-    assert login_response.status_code == 200
+    assert login_response.status_code == 201
     token = login_response.json()["data"]["access_token"]
 
     response = client.get(
@@ -258,11 +272,43 @@ def test_login_with_auth0_enabled(
         "/api/auth/login",
         json={"email": "testuser@example.com", "password": "TestUser123!"},
     )
-    assert response.status_code == 200
+    assert response.status_code == 201
     body = response.json()
     assert body["success"] is True
     assert body["data"]["access_token"]
     assert body["data"]["email"] == "testuser@example.com"
+
+
+def test_login_with_auth0_incorrect_password(
+    client: TestClient,
+    test_user: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.api.services import auth_service
+    from src.exceptions import ConflictError
+
+    class FakeAuth0:
+        is_enabled = True
+
+        def authenticate(self, email: str, password: str) -> dict:
+            raise ConflictError(
+                message="Incorrect email or password.",
+                code="INCORRECT_PASSWORD",
+            )
+
+    monkeypatch.setattr(
+        auth_service,
+        "get_auth0_service",
+        lambda settings=None: FakeAuth0(),
+    )
+
+    response = client.post(
+        "/api/auth/login",
+        json={"email": "testuser@example.com", "password": "WrongPassword!"},
+    )
+    assert response.status_code == 409
+    body = response.json()
+    assert body["error"]["code"] == "INCORRECT_PASSWORD"
 
 
 def test_auth0_webhook_accepts_valid_request(client: TestClient) -> None:
@@ -278,8 +324,10 @@ def test_auth0_webhook_accepts_valid_request(client: TestClient) -> None:
 
 def test_protected_endpoint_requires_auth(client: TestClient) -> None:
     response = client.get("/protected-endpoint")
-    assert response.status_code == 401
-    assert response.json() == {"detail": "Not authenticated"}
+    assert response.status_code == 403
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "FORBIDDEN"
 
 
 def test_protected_endpoint_rejects_invalid_token(client: TestClient) -> None:
@@ -288,7 +336,9 @@ def test_protected_endpoint_rejects_invalid_token(client: TestClient) -> None:
         headers={"Authorization": "Bearer invalid-token"},
     )
     assert response.status_code == 401
-    assert response.json() == {"detail": "Invalid authentication credentials"}
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "UNAUTHORIZED"
 
 
 def test_protected_endpoint_accepts_valid_token(
@@ -299,7 +349,7 @@ def test_protected_endpoint_accepts_valid_token(
         "/api/auth/login",
         json={"email": "testuser@example.com", "password": "TestUser123!"},
     )
-    assert login_response.status_code == 200
+    assert login_response.status_code == 201
     token = login_response.json()["data"]["access_token"]
 
     response = client.get(

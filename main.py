@@ -90,18 +90,27 @@ def create_app() -> FastAPI:
                 },
             },
             401: {
-                "description": "Missing or invalid authentication token.",
+                "description": "Invalid or expired authentication token.",
                 "content": {
                     "application/json": {
-                        "examples": {
-                            "not_authenticated": {
-                                "summary": "No token provided",
-                                "value": {"detail": "Not authenticated"},
-                            },
-                            "invalid_token": {
-                                "summary": "Invalid token",
-                                "value": {"detail": "Invalid authentication credentials"},
-                            },
+                        "example": {
+                            "success": False,
+                            "message": "Invalid or expired token.",
+                            "error": {"code": "UNAUTHORIZED", "details": None},
+                        }
+                    }
+                },
+            },
+            403: {
+                "description": "Missing JWT token.",
+                "content": {
+                    "application/json": {
+                        "example": {
+                            "success": False,
+                            "message": (
+                                "Authentication is required to access this resource."
+                            ),
+                            "error": {"code": "FORBIDDEN", "details": None},
                         }
                     }
                 },

@@ -10,13 +10,11 @@ class LoginRequest(BaseModel):
 
     email: str = Field(
         ...,
-        min_length=1,
         description="Email address used to sign in.",
         examples=["user@example.com"],
     )
     password: str = Field(
         ...,
-        min_length=PASSWORD_MIN_LENGTH,
         description="Account password. Must be at least 8 characters.",
         examples=["StrongPassword123!"],
     )
@@ -32,8 +30,22 @@ class LoginRequest(BaseModel):
     @field_validator("email")
     @classmethod
     def validate_email(cls, value: str) -> str:
-        """Ensure the email address has a valid format."""
+        """Ensure the email is present and has a valid format."""
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("Email is required.")
         return normalize_email(value)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        """Ensure the password is present and meets the minimum length."""
+        if not isinstance(value, str) or not value:
+            raise ValueError("Password is required.")
+        if len(value) < PASSWORD_MIN_LENGTH:
+            raise ValueError(
+                f"Password must be at least {PASSWORD_MIN_LENGTH} characters."
+            )
+        return value
 
 
 class LoginResponseData(BaseModel):
