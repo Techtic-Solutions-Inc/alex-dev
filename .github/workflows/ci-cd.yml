@@ -239,4 +239,33 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Prepare ECS task definition
+        run: |
+          jq \
+            --arg execution_role "${{ vars.ECS_EXECUTION_ROLE_ARN }}" \
+            --arg task_role "${{ vars.ECS_TASK_ROLE_ARN }}" \
+            '.executionRoleArn = $execution_role | .taskRoleArn = $task_role' \
+            deploy/ecs-task-definition.json > deploy/ecs-task-definition.prepared.json
+
+      - name: Render ECS task definition
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: deploy/ecs-task-definition.prepared.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY || 'fastapi-backend' }}:${{ github.sha }}
+
+      - name: Deploy to Amazon ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ vars.ECS_SERVICE }}
+          cluster: ${{ vars.ECS_CLUSTER }}
+          wait-for-service-stability: true

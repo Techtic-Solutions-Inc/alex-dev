@@ -1,10 +1,40 @@
 {
+  "family": "fastapi-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
   "containerDefinitions": [
     {
       "name": "fastapi-backend",
-      "image": "fastapi-backend:latest",
+      "image": "ACCOUNT_ID.dkr.ecr.REGION.amazonaws.com/fastapi-backend:latest",
       "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
       "environment": [
+        {
+          "name": "ENVIRONMENT",
+          "value": "production"
+        },
+        {
+          "name": "LOG_LEVEL",
+          "value": "INFO"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DATABASE_URL",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:fastapi-backend/DATABASE_URL"
+        },
+        {
+          "name": "JWT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:fastapi-backend/JWT_SECRET"
+        },
         {
           "name": "APP_BASE_URL",
           "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:fastapi-backend/APP_BASE_URL"
@@ -21,7 +51,25 @@
           "name": "SENDGRID_PASSWORD_RESET_TEMPLATE_ID",
           "valueFrom": "arn:aws:secretsmanager:REGION:ACCOUNT_ID:secret:fastapi-backend/SENDGRID_PASSWORD_RESET_TEMPLATE_ID"
         }
-      ]
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/fastapi-backend",
+          "awslogs-region": "REGION",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://127.0.0.1:8000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
     }
   ]
 }
