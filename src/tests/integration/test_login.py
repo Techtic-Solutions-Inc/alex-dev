@@ -1,65 +1,56 @@
+"""Integration tests for login and protected routes."""
 
-import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch
 
-from main import app
-
-
-@pytest.fixture
-def client():
-    return TestClient(app)
+from src.api.models.user import User
 
 
-@patch('src.api.services.auth_service.authenticate_user')
-def test_login_success(mock_authenticate_user, client):
-    mock_authenticate_user.return_value = {
-        'id': '123',
-        'email': 'user@example.com',
-        'access_token': 'fake-jwt-token',
-        'token_type': 'bearer',
-        'expires_in': 3600
-    }
+def test_login_success(client: TestClient, test_user: User) -> None:
     response = client.post(
-        '/api/auth/login',
+        "/api/auth/login",
         json={
-            'email': 'user@example.com',
-            'password': 'securePassword123'
-        }
+            "email": "testuser@example.com",
+            "password": "TestUser123!",
+        },
     )
-    assert response.status_code == 201
-    assert response.json()['success'] is True
-    assert 'access_token' in response.json()['data']
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert "access_token" in body["data"]
+    assert body["data"]["email"] == "testuser@example.com"
 
 
-def test_login_empty_fields(client):
+def test_login_empty_fields(client: TestClient) -> None:
     response = client.post(
-        '/api/auth/login',
+        "/api/auth/login",
         json={
-            'email': '',
-            'password': ''
-        }
+            "email": "",
+            "password": "",
+        },
     )
-    assert response.status_code == 400
-    assert 'email' in response.json()['detail']
-    assert 'password' in response.json()['detail']
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert any(error["field"] == "email" for error in body["errors"])
+    assert any(error["field"] == "password" for error in body["errors"])
 
 
-@patch('src.api.services.auth_service.authenticate_user')
-def test_login_incorrect_password(mock_authenticate_user, client):
-    mock_authenticate_user.side_effect = Exception('Incorrect password')
+def test_login_incorrect_password(client: TestClient, test_user: User) -> None:
     response = client.post(
-        '/api/auth/login',
+        "/api/auth/login",
         json={
-            'email': 'user@example.com',
-            'password': 'wrongPassword'
-        }
+            "email": "testuser@example.com",
+            "password": "WrongPassword!",
+        },
     )
-    assert response.status_code == 409
-    assert 'Incorrect password' in response.json()['detail']
+    assert response.status_code == 401
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "INVALID_CREDENTIALS"
 
 
-def test_access_protected_route_without_token(client):
-    response = client.get('/api/protected-route')
-    assert response.status_code == 403
-    assert 'Not authenticated' in response.json()['detail']
+def test_access_protected_route_without_token(client: TestClient) -> None:
+    response = client.get("/protected-endpoint")
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Not authenticated"}
