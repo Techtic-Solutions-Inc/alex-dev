@@ -1,3 +1,4 @@
+"""Shared pytest fixtures for integration tests."""
 
 import os
 from pathlib import Path
@@ -6,10 +7,34 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from main import app
+_env_test = Path(__file__).resolve().parents[2] / ".env.test"
+if _env_test.exists():
+    for raw_line in _env_test.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
+from main import (
+    app,
+    limiter,
+)
 from src.api.models.user import User
-from src.config.test_database import TestSessionLocal, create_test_tables, drop_test_tables
+from src.config.test_database import (
+    TestSessionLocal,
+    create_test_tables,
+    drop_test_tables,
+)
 from src.utils.password import hash_password
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter():
+    """Clear rate-limit counters so tests do not interfere with each other."""
+    limiter.reset()
+    yield
+    limiter.reset()
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -38,17 +63,25 @@ def db_session() -> Session:
 
 
 @pytest.fixture
-def test_users(db_session: Session):
-    """Create test users for various roles."""
-    users = [
-        User(username="admin", first_name="Admin", last_name="User", email="admin@test.com", password_hash=hash_password("TestAdmin123!"), is_active=True),
-        User(username="regular", first_name="Regular", last_name="User", email="user@test.com", password_hash=hash_password("TestUser123!"), is_active=True),
-        User(username="viewer", first_name="Viewer", last_name="User", email="viewer@test.com", password_hash=hash_password("TestViewer123!"), is_active=True),
-        User(username="inactive", first_name="Inactive", last_name="User", email="inactive@test.com", password_hash=hash_password("TestInactive123!"), is_active=False),
-        User(username="newuser", first_name="New", last_name="User", email="newuser@test.com", password_hash=hash_password("NewUser123!"), is_active=True)
-    ]
-    db_session.bulk_save_objects(users)
+def test_user(db_session: Session) -> User:
+    """Create a disposable user for authentication tests."""
+    existing = (
+        db_session.query(User).filter(User.username == "testuser").first()
+    )
+    if existing is not None:
+        db_session.delete(existing)
+        db_session.commit()
+
+    user = User(
+        username="testuser",
+        first_name="Test",
+        last_name="User",
+        email="testuser@example.com",
+        password_hash=hash_password("TestUser123!"),
+    )
+    db_session.add(user)
     db_session.commit()
-    yield users
-    db_session.query(User).delete()
+    db_session.refresh(user)
+    yield user
+    db_session.delete(user)
     db_session.commit()
