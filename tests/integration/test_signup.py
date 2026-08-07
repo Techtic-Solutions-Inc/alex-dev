@@ -1,7 +1,8 @@
 
+from unittest.mock import patch
+
 import pytest
 from httpx import AsyncClient
-from unittest.mock import patch
 
 from src.api.models.user import User
 
