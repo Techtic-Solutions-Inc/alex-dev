@@ -28,7 +28,7 @@ router = APIRouter()
             "content": {
                 "application/json": {
                     "example": {
-                        "success": false,
+                        "success": False,
                         "message": "Internal server error",
                         "error": {
                             "code": "internal_error",
