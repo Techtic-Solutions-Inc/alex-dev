@@ -1,3 +1,4 @@
+
 import os
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
@@ -64,5 +65,5 @@ def db_session(db_engine: Engine, alembic_config: Config) -> Iterator[Session]:
 @pytest.fixture
 async def client() -> AsyncIterator[AsyncClient]:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        yield client
