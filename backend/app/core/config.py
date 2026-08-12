@@ -23,6 +23,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql://user:password@localhost/dbname"
     JWT_SECRET: str = "your_secret_key"
     JWT_EXPIRY: int = 30
+    JWT_REMEMBER_ME_EXPIRY: int = 43200
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: list[str] = ["*"]
     RATE_LIMIT: str = "100/minute"

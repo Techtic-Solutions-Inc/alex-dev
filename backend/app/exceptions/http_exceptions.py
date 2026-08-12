@@ -93,3 +93,18 @@ class ValidationException(AppHTTPException):
             code=code,
             details=details,
         )
+
+
+class BadRequestException(AppHTTPException):
+    def __init__(
+        self,
+        message: str = "Bad request",
+        code: str = "BAD_REQUEST",
+        details: Any = None,
+    ) -> None:
+        super().__init__(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            message=message,
+            code=code,
+            details=details,
+        )
