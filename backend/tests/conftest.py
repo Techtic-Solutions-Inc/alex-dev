@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -26,11 +26,10 @@ def _load_env_test() -> None:
 
 _load_env_test()
 
-from alembic import command  # noqa: E402
-from alembic.config import Config  # noqa: E402
-
-from app.core.config import settings, sync_database_url  # noqa: E402
-from app.main import app  # noqa: E402
+from alembic import command
+from alembic.config import Config
+from app.core.config import settings, sync_database_url
+from app.main import app
 
 
 @pytest.fixture(scope="session")

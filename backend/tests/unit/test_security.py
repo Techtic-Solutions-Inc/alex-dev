@@ -1,7 +1,6 @@
 from datetime import timedelta
 
 import pytest
-
 from app.core.security import create_access_token, verify_token
 from app.exceptions.http_exceptions import UnauthorizedException
 from app.middleware.auth import get_current_user

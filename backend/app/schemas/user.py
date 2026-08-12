@@ -21,7 +21,6 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Schema for creating a new user."""
 
-    pass
 
 
 class UserResponse(UserBase):
