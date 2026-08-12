@@ -1,4 +1,3 @@
-
 import os
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
@@ -30,6 +29,7 @@ _load_env_test()
 from alembic import command
 from alembic.config import Config
 from app.core.config import settings, sync_database_url
+from app.dependencies.db import get_db
 from app.main import app
 
 
@@ -63,7 +63,12 @@ def db_session(db_engine: Engine, alembic_config: Config) -> Iterator[Session]:
 
 
 @pytest.fixture
-async def client() -> AsyncIterator[AsyncClient]:
+async def client(db_session: Session) -> AsyncIterator[AsyncClient]:
+    def override_get_db() -> Iterator[Session]:
+        yield db_session
+
+    app.dependency_overrides[get_db] = override_get_db
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
-        yield client
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        yield http_client
+    app.dependency_overrides.clear()

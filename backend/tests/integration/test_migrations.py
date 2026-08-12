@@ -20,7 +20,17 @@ def test_initial_migration_creates_users_table(
     assert "users" in inspector.get_table_names()
 
     columns = {column["name"] for column in inspector.get_columns("users")}
-    assert columns == {"id", "username", "email", "created_at", "updated_at"}
+    assert columns == {
+        "id",
+        "username",
+        "email",
+        "created_at",
+        "updated_at",
+        "first_name",
+        "last_name",
+        "hashed_password",
+        "is_locked",
+    }
 
 
 def test_migration_rollback_drops_users_table(
@@ -40,13 +50,17 @@ def test_users_email_unique_constraint(db_session: Session) -> None:
     user_id = uuid.uuid4()
     db_session.execute(
         text(
-            "INSERT INTO users (id, username, email) "
-            "VALUES (:id, :username, :email)"
+            "INSERT INTO users "
+            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
         ),
         {
             "id": user_id,
             "username": "alice",
             "email": "alice@example.com",
+            "first_name": "Alice",
+            "last_name": "Example",
+            "hashed_password": "hashed",
         },
     )
     db_session.flush()
@@ -54,13 +68,17 @@ def test_users_email_unique_constraint(db_session: Session) -> None:
     with pytest.raises(IntegrityError):
         db_session.execute(
             text(
-                "INSERT INTO users (id, username, email) "
-                "VALUES (:id, :username, :email)"
+                "INSERT INTO users "
+                "(id, username, email, first_name, last_name, hashed_password, is_locked) "
+                "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
             ),
             {
                 "id": uuid.uuid4(),
                 "username": "bob",
                 "email": "alice@example.com",
+                "first_name": "Bob",
+                "last_name": "Example",
+                "hashed_password": "hashed",
             },
         )
         db_session.flush()
@@ -69,13 +87,17 @@ def test_users_email_unique_constraint(db_session: Session) -> None:
 def test_users_username_unique_constraint(db_session: Session) -> None:
     db_session.execute(
         text(
-            "INSERT INTO users (id, username, email) "
-            "VALUES (:id, :username, :email)"
+            "INSERT INTO users "
+            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
         ),
         {
             "id": uuid.uuid4(),
             "username": "carol",
             "email": "carol@example.com",
+            "first_name": "Carol",
+            "last_name": "Example",
+            "hashed_password": "hashed",
         },
     )
     db_session.flush()
@@ -83,13 +105,17 @@ def test_users_username_unique_constraint(db_session: Session) -> None:
     with pytest.raises(IntegrityError):
         db_session.execute(
             text(
-                "INSERT INTO users (id, username, email) "
-                "VALUES (:id, :username, :email)"
+                "INSERT INTO users "
+                "(id, username, email, first_name, last_name, hashed_password, is_locked) "
+                "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
             ),
             {
                 "id": uuid.uuid4(),
                 "username": "carol",
                 "email": "carol2@example.com",
+                "first_name": "Carol",
+                "last_name": "Duplicate",
+                "hashed_password": "hashed",
             },
         )
         db_session.flush()
