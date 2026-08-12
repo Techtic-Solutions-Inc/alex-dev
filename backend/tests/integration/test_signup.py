@@ -1,11 +1,10 @@
 import uuid
 
 import pytest
+from app.core.security import hash_password
 from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
-from app.core.security import hash_password
 
 
 @pytest.mark.asyncio
