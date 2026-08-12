@@ -16,6 +16,7 @@ router = APIRouter()
         "Use this endpoint for load balancer health probes and uptime monitoring. "
         "No authentication is required."
     ),
+    tags=["Health"],
     responses={
         200: {
             "description": "Service is healthy",
@@ -24,6 +25,18 @@ router = APIRouter()
         500: {
             "description": "Internal server error",
             "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": false,
+                        "message": "Internal server error",
+                        "error": {
+                            "code": "internal_error",
+                            "details": "Unexpected error occurred"
+                        }
+                    }
+                }
+            }
         },
     },
 )
