@@ -1,6 +1,15 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+def sync_database_url(url: str) -> str:
+    """Return a synchronous driver URL for Alembic and sync SQLAlchemy engines."""
+    if url.startswith("postgresql+asyncpg://"):
+        return url.replace("postgresql+asyncpg://", "postgresql+psycopg2://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg2://", 1)
+    return url
+
+
 class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
 

@@ -29,13 +29,13 @@ _load_env_test()
 from alembic import command  # noqa: E402
 from alembic.config import Config  # noqa: E402
 
-from app.core.config import settings  # noqa: E402
+from app.core.config import settings, sync_database_url  # noqa: E402
 from app.main import app  # noqa: E402
 
 
 @pytest.fixture(scope="session")
 def db_engine() -> Iterator[Engine]:
-    engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
+    engine = create_engine(sync_database_url(settings.DATABASE_URL), pool_pre_ping=True)
     yield engine
     engine.dispose()
 
@@ -44,7 +44,7 @@ def db_engine() -> Iterator[Engine]:
 def alembic_config() -> Config:
     cfg = Config(str(_BACKEND_DIR / "alembic.ini"))
     cfg.set_main_option("script_location", str(_BACKEND_DIR / "app/db/migrations"))
-    cfg.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
+    cfg.set_main_option("sqlalchemy.url", sync_database_url(settings.DATABASE_URL))
     return cfg
 
 

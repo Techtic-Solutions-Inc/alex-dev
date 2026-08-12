@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.core.config import settings
+from app.core.config import settings, sync_database_url
 from app.db.base import Base
 from app.models import User  # noqa: F401 — register models for autogenerate
 
@@ -22,13 +22,13 @@ def get_url() -> str:
     """Resolve the database URL from Alembic config, env, or app settings."""
     ini_url = config.get_main_option("sqlalchemy.url")
     if ini_url and ini_url != _PLACEHOLDER_URL:
-        return ini_url
+        return sync_database_url(ini_url)
 
     env_url = os.environ.get("DATABASE_URL")
     if env_url:
-        return env_url
+        return sync_database_url(env_url)
 
-    return settings.DATABASE_URL
+    return sync_database_url(settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
