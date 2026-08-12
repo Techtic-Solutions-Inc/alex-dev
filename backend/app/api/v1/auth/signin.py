@@ -1,12 +1,55 @@
+import uuid
+
 from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.security import verify_token
 from app.dependencies.db import get_db
+from app.exceptions.http_exceptions import ForbiddenException
+from app.middleware.auth import oauth2_scheme
+from app.models.user import User
 from app.schemas.common import ErrorResponse
 from app.schemas.user import SignInRequest, SignInResponse, SignInTokenData
 from app.services.auth_service import AuthService
 
 router = APIRouter()
+
+
+def _ensure_email_belongs_to_requesting_user(
+    db: Session,
+    token: str | None,
+    normalized_email: str,
+) -> None:
+    """Prevent IDOR when an authenticated caller submits another user's email."""
+    if not token:
+        return
+
+    try:
+        payload = verify_token(token)
+    except ValueError:
+        return
+
+    user_id = payload.get("sub")
+    if not user_id:
+        return
+
+    try:
+        parsed_user_id = uuid.UUID(str(user_id))
+    except ValueError:
+        return
+
+    authenticated_user = db.scalar(
+        select(User).where(User.id == parsed_user_id)
+    )
+    if authenticated_user is None:
+        return
+
+    if authenticated_user.email.strip().lower() != normalized_email:
+        raise ForbiddenException(
+            message="Email does not belong to the authenticated user",
+            code="EMAIL_USER_MISMATCH",
+        )
 
 
 @router.post(
@@ -91,19 +134,37 @@ router = APIRouter()
             },
         },
         403: {
-            "description": "Account is locked",
+            "description": "Account is locked or email does not match authenticated user",
             "model": ErrorResponse,
             "content": {
                 "application/json": {
-                    "example": {
-                        "success": False,
-                        "message": (
-                            "Your account has been locked. "
-                            "Please contact support."
-                        ),
-                        "error": {
-                            "code": "ACCOUNT_LOCKED",
-                            "details": None,
+                    "examples": {
+                        "account_locked": {
+                            "summary": "Account is locked",
+                            "value": {
+                                "success": False,
+                                "message": (
+                                    "Your account has been locked. "
+                                    "Please contact support."
+                                ),
+                                "error": {
+                                    "code": "ACCOUNT_LOCKED",
+                                    "details": None,
+                                },
+                            },
+                        },
+                        "email_user_mismatch": {
+                            "summary": "Email does not belong to authenticated user",
+                            "value": {
+                                "success": False,
+                                "message": (
+                                    "Email does not belong to the authenticated user"
+                                ),
+                                "error": {
+                                    "code": "EMAIL_USER_MISMATCH",
+                                    "details": None,
+                                },
+                            },
                         },
                     }
                 }
@@ -142,8 +203,12 @@ router = APIRouter()
 async def signin(
     body: SignInRequest,
     db: Session = Depends(get_db),
+    token: str | None = Depends(oauth2_scheme),
 ) -> SignInResponse:
     """Authenticate a user and return a JWT access token."""
+    normalized_email = body.email.strip().lower()
+    _ensure_email_belongs_to_requesting_user(db, token, normalized_email)
+
     auth_service = AuthService(db)
     token_data = auth_service.authenticate_user(body)
 
