@@ -72,6 +72,10 @@ class SignupRequest(BaseModel):
         return value
 
 
+def _build_full_name(first_name: str, last_name: str) -> str:
+    return " ".join(part for part in (first_name, last_name) if part)
+
+
 class SignupUserData(BaseModel):
     """Registered user data returned after successful signup."""
 
@@ -95,6 +99,36 @@ class SignupUserData(BaseModel):
         description="Registered email address",
         examples=["john.doe@example.com"],
     )
+    name: str = Field(
+        ...,
+        description="Full name derived from first and last name",
+        examples=["John Doe"],
+    )
+    phone: str = Field(
+        default="",
+        description="Contact phone number",
+        examples=["+1-555-0100"],
+    )
+    phone_number: str = Field(
+        default="",
+        description="Alias of phone for frontend compatibility",
+        examples=["+1-555-0100"],
+    )
+
+    @classmethod
+    def from_user(cls, user: object) -> "SignupUserData":
+        phone = getattr(user, "phone", None) or ""
+        first_name = str(getattr(user, "first_name"))
+        last_name = str(getattr(user, "last_name"))
+        return cls(
+            id=str(getattr(user, "id")),
+            first_name=first_name,
+            last_name=last_name,
+            email=getattr(user, "email"),
+            name=_build_full_name(first_name, last_name),
+            phone=phone,
+            phone_number=phone,
+        )
 
 
 class SignupResponse(BaseModel):
@@ -170,7 +204,7 @@ class SignInRequest(BaseModel):
 
 
 class SignInTokenData(BaseModel):
-    """JWT token payload returned after successful sign-in."""
+    """JWT token and user profile returned after successful sign-in."""
 
     access_token: str = Field(
         ...,
@@ -187,6 +221,66 @@ class SignInTokenData(BaseModel):
         description="Token lifetime in seconds",
         examples=[1800],
     )
+    id: str = Field(
+        ...,
+        description="Unique identifier for the authenticated user",
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    )
+    first_name: str = Field(
+        ...,
+        description="User's first name",
+        examples=["John"],
+    )
+    last_name: str = Field(
+        ...,
+        description="User's last name",
+        examples=["Doe"],
+    )
+    email: EmailStr = Field(
+        ...,
+        description="Registered email address",
+        examples=["john.doe@example.com"],
+    )
+    name: str = Field(
+        ...,
+        description="Full name derived from first and last name",
+        examples=["John Doe"],
+    )
+    phone: str = Field(
+        default="",
+        description="Contact phone number",
+        examples=["+1-555-0100"],
+    )
+    phone_number: str = Field(
+        default="",
+        description="Alias of phone for frontend compatibility",
+        examples=["+1-555-0100"],
+    )
+
+    @classmethod
+    def from_auth_result(
+        cls,
+        user: object,
+        *,
+        access_token: str,
+        token_type: str,
+        expires_in: int,
+    ) -> "SignInTokenData":
+        phone = getattr(user, "phone", None) or ""
+        first_name = str(getattr(user, "first_name"))
+        last_name = str(getattr(user, "last_name"))
+        return cls(
+            access_token=access_token,
+            token_type=token_type,
+            expires_in=expires_in,
+            id=str(getattr(user, "id")),
+            first_name=first_name,
+            last_name=last_name,
+            email=getattr(user, "email"),
+            name=_build_full_name(first_name, last_name),
+            phone=phone,
+            phone_number=phone,
+        )
 
 
 class SignInResponse(BaseModel):

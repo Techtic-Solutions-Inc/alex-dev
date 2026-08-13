@@ -41,8 +41,8 @@ class AuthService:
         )
         return self.user_repository.create(user)
 
-    def authenticate_user(self, payload: SignInRequest) -> dict[str, str | int]:
-        """Validate credentials and return a JWT access token."""
+    def authenticate_user(self, payload: SignInRequest) -> tuple[User, dict[str, str | int]]:
+        """Validate credentials and return the user plus JWT access token."""
         normalized_email = payload.email.strip().lower()
         user = self.user_repository.get_by_email(normalized_email)
 
@@ -71,8 +71,9 @@ class AuthService:
             expires_delta=expires_delta,
         )
 
-        return {
+        token_data = {
             "access_token": access_token,
             "token_type": "bearer",
             "expires_in": expiry_minutes * 60,
         }
+        return user, token_data

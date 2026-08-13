@@ -1,4 +1,19 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _resolve_env_files() -> tuple[str, ...]:
+    """Load workspace and backend env files (later entries override earlier)."""
+    backend_dir = Path(__file__).resolve().parent.parent
+    root_dir = backend_dir.parent
+    candidates = (
+        root_dir / ".env.test",
+        root_dir / ".env",
+        backend_dir / ".env.test",
+        backend_dir / ".env",
+    )
+    return tuple(str(path) for path in candidates if path.is_file())
 
 
 def sync_database_url(url: str) -> str:
@@ -14,7 +29,7 @@ class Settings(BaseSettings):
     """Application configuration loaded from environment variables."""
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_resolve_env_files() or ".env",
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="ignore",

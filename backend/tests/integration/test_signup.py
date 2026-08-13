@@ -31,6 +31,9 @@ async def test_signup_success(client: AsyncClient) -> None:
             "first_name": "John",
             "last_name": "Doe",
             "email": email,
+            "name": "John Doe",
+            "phone": "",
+            "phone_number": "",
         },
     }
     assert body["data"]["id"]

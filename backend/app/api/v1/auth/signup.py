@@ -136,10 +136,5 @@ async def signup(
     return SignupResponse(
         success=True,
         message="Account created successfully",
-        data=SignupUserData(
-            id=str(user.id),
-            first_name=user.first_name,
-            last_name=user.last_name,
-            email=user.email,
-        ),
+        data=SignupUserData.from_user(user),
     )
