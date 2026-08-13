@@ -1,10 +1,11 @@
 import os
+import uuid
 from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -29,7 +30,7 @@ _load_env_test()
 from alembic import command
 from alembic.config import Config
 from app.core.config import settings, sync_database_url
-from app.core.security import create_access_token
+from app.core.security import create_access_token, hash_password
 from app.dependencies.db import get_db
 from app.main import app
 
@@ -38,6 +39,41 @@ def auth_header(user_id: str, role: str = "user") -> dict[str, str]:
     """Build an Authorization header for test requests."""
     token = create_access_token({"sub": user_id, "role": role})
     return {"Authorization": f"Bearer {token}"}
+
+
+def _insert_user(
+    db_session: Session,
+    *,
+    email: str,
+    first_name: str = "Test",
+    last_name: str = "User",
+    password: str = "TestUser123!",
+    ai_credit_usage: int = 0,
+) -> uuid.UUID:
+    user_id = uuid.uuid4()
+    db_session.execute(
+        text(
+            "INSERT INTO users "
+            "(id, username, email, first_name, last_name, hashed_password, "
+            "is_locked, role, mobile_number, bio, address_street, address_city, "
+            "address_state, address_zip, address_country, time_zone, "
+            "ai_credit_usage) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, "
+            ":hashed_password, false, 'user', '', '', '', '', '', '', '', '', "
+            ":ai_credit_usage)"
+        ),
+        {
+            "id": user_id,
+            "username": email,
+            "email": email,
+            "first_name": first_name,
+            "last_name": last_name,
+            "hashed_password": hash_password(password),
+            "ai_credit_usage": ai_credit_usage,
+        },
+    )
+    db_session.flush()
+    return user_id
 
 
 @pytest.fixture(scope="session")
@@ -79,3 +115,26 @@ async def client(db_session: Session) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=transport, base_url="http://test") as http_client:
         yield http_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+async def async_client(client: AsyncClient) -> AsyncClient:
+    """Alias used by some integration tests."""
+    return client
+
+
+@pytest.fixture
+def user_token_headers(db_session: Session) -> dict[str, str]:
+    user_id = _insert_user(db_session, email="user@test.com")
+    return auth_header(str(user_id))
+
+
+@pytest.fixture
+def other_user_token_headers(db_session: Session) -> dict[str, str]:
+    user_id = _insert_user(
+        db_session,
+        email="otheruser@test.com",
+        first_name="Other",
+        last_name="User",
+    )
+    return auth_header(str(user_id))

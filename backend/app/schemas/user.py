@@ -118,13 +118,13 @@ class SignupUserData(BaseModel):
     @classmethod
     def from_user(cls, user: object) -> "SignupUserData":
         phone = getattr(user, "phone", None) or ""
-        first_name = str(getattr(user, "first_name"))
-        last_name = str(getattr(user, "last_name"))
+        first_name = str(user.first_name)
+        last_name = str(user.last_name)
         return cls(
-            id=str(getattr(user, "id")),
+            id=str(user.id),
             first_name=first_name,
             last_name=last_name,
-            email=getattr(user, "email"),
+            email=user.email,
             name=_build_full_name(first_name, last_name),
             phone=phone,
             phone_number=phone,
@@ -267,16 +267,16 @@ class SignInTokenData(BaseModel):
         expires_in: int,
     ) -> "SignInTokenData":
         phone = getattr(user, "phone", None) or ""
-        first_name = str(getattr(user, "first_name"))
-        last_name = str(getattr(user, "last_name"))
+        first_name = str(user.first_name)
+        last_name = str(user.last_name)
         return cls(
             access_token=access_token,
             token_type=token_type,
             expires_in=expires_in,
-            id=str(getattr(user, "id")),
+            id=str(user.id),
             first_name=first_name,
             last_name=last_name,
-            email=getattr(user, "email"),
+            email=user.email,
             name=_build_full_name(first_name, last_name),
             phone=phone,
             phone_number=phone,

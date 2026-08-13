@@ -45,11 +45,18 @@ def register_exception_handlers(app: Any) -> None:
         field_errors = []
         for error in exc.errors():
             loc = error.get("loc", ())
-            field = ".".join(str(part) for part in loc if part != "body")
+            field = ".".join(
+                str(part)
+                for part in loc
+                if part not in {"body", "query", "path", "header", "cookie"}
+            )
+            message = error.get("msg", "Invalid value")
+            if isinstance(message, str) and message.startswith("Value error, "):
+                message = message.removeprefix("Value error, ")
             field_errors.append(
                 {
                     "field": field or "body",
-                    "message": error.get("msg", "Invalid value"),
+                    "message": message,
                 }
             )
         return JSONResponse(
