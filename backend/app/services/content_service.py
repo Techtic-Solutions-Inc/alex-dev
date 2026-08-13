@@ -1,16 +1,26 @@
 from sqlalchemy.orm import Session
-from app.models.content import Content
-from app.exceptions import NotFoundException, ForbiddenException
+from app.exceptions.http_exceptions import NotFoundException, ForbiddenException
+from app.repositories.content_repository import ContentRepository
+from app.services.analytics_service import GoogleAnalyticsService
+from app.services.stripe_service import StripeService
+from app.schemas.content import ContentCreateRequest, ContentUpdateRequest, ContentData
+import uuid
+
 
 class ContentService:
-    def __init__(self, db: Session):
-        self.db = db
+    def __init__(self, db: Session) -> None:
+        self.repository = ContentRepository(db)
+        self.analytics = GoogleAnalyticsService()
+        self.stripe = StripeService()
 
-    def update_content(self, content_id: str, payload: dict, *, user_id: str):
-        content = self.db.query(Content).filter(Content.id == content_id).first()
-        if content is None:
-            raise NotFoundException("Content not found")
-        if str(content.user_id) != user_id:
-            raise ForbiddenException(message="Access denied", code="FORBIDDEN")
-        # Update content logic here
-        return content
+    def create_content(self, payload: ContentCreateRequest, *, user_id: str | None = None) -> ContentData:
+        # Implementation for creating content
+        pass
+
+    def get_content(self, content_id: uuid.UUID, *, user_id: str | None = None) -> ContentData:
+        # Implementation for retrieving content
+        pass
+
+    def update_content(self, content_id: uuid.UUID, payload: ContentUpdateRequest, *, user_id: str | None = None) -> ContentData:
+        # Implementation for updating content
+        pass

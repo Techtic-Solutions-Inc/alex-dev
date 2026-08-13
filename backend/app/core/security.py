@@ -1,23 +1,50 @@
-import jwt
-from typing import Any, Dict
-
+from datetime import datetime, timedelta, timezone
+from typing import Any
+import bcrypt
+from jose import JWTError, jwt
 from app.core.config import settings
 
 ALGORITHM = "HS256"
 PASSWORD_RESET_TOKEN_TYPE = "password_reset"
 
 
-def verify_token(token: str) -> Dict[str, Any]:
-    payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGORITHM])
-    if payload.get("type") == PASSWORD_RESET_TOKEN_TYPE:
-        raise ValueError("Invalid or expired token")
-    return payload
+def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
-def get_current_user(token: str) -> Dict[str, Any]:
+def create_password_reset_token(user_id: str, email: str, expires_delta: timedelta | None = None) -> str:
+    to_encode = {"sub": user_id, "email": email, "type": PASSWORD_RESET_TOKEN_TYPE}
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRY)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def verify_password_reset_token(token: str) -> dict[str, Any]:
     try:
-        payload = verify_token(token)
-        # Additional logic to retrieve user from payload
-    except ValueError as e:
-        raise Exception("Authentication failed") from e
-    return payload
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != PASSWORD_RESET_TOKEN_TYPE:
+            raise JWTError("Invalid token type")
+        return payload
+    except JWTError:
+        return {}
+
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
+    return hashed_password.decode('utf-8')
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
