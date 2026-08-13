@@ -56,8 +56,8 @@ async def test_signin_success(client: AsyncClient, db_session: Session) -> None:
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
         ),
         {
             "id": uuid.uuid4(),
@@ -114,8 +114,8 @@ async def test_signin_locked_account(client: AsyncClient, db_session: Session) -
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, true)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, true, 'user')"
         ),
         {
             "id": uuid.uuid4(),
@@ -156,8 +156,8 @@ async def test_signin_remember_me_extends_expiry(
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
         ),
         {
             "id": uuid.uuid4(),

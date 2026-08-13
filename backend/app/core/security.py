@@ -8,6 +8,8 @@ from app.core.config import settings
 
 ALGORITHM = "HS256"
 
+PASSWORD_RESET_TOKEN_TYPE = "password_reset"
+
 
 def create_access_token(
     data: dict[str, Any],
@@ -22,6 +24,25 @@ def create_access_token(
     return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=ALGORITHM)
 
 
+def create_password_reset_token(
+    user_id: str,
+    email: str,
+    expires_delta: timedelta | None = None,
+) -> str:
+    """Create a signed JWT used exclusively for password reset links."""
+    expire = datetime.now(timezone.utc) + (
+        expires_delta
+        or timedelta(minutes=settings.PASSWORD_RESET_TOKEN_EXPIRY)
+    )
+    to_encode: dict[str, Any] = {
+        "sub": user_id,
+        "email": email,
+        "type": PASSWORD_RESET_TOKEN_TYPE,
+        "exp": expire,
+    }
+    return jwt.encode(to_encode, settings.JWT_SECRET, algorithm=ALGORITHM)
+
+
 def verify_token(token: str) -> dict[str, Any]:
     """Decode and validate a JWT access token."""
     try:
@@ -29,6 +50,22 @@ def verify_token(token: str) -> dict[str, Any]:
         return payload
     except JWTError as exc:
         raise ValueError("Invalid or expired token") from exc
+
+
+def verify_password_reset_token(token: str) -> dict[str, Any]:
+    """Decode and validate a password-reset JWT; reject expired or wrong-type tokens."""
+    try:
+        payload = jwt.decode(token, settings.JWT_SECRET, algorithms=[ALGORITHM])
+    except JWTError as exc:
+        raise ValueError("Invalid or expired password reset token") from exc
+
+    if payload.get("type") != PASSWORD_RESET_TOKEN_TYPE:
+        raise ValueError("Invalid or expired password reset token")
+
+    if not payload.get("sub") or not payload.get("email"):
+        raise ValueError("Invalid or expired password reset token")
+
+    return payload
 
 
 def hash_password(password: str) -> str:

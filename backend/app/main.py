@@ -7,6 +7,8 @@ from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
 from app.api.v1.auth.router import auth_router
+from app.api.v1.blog.router import router as blog_router
+from app.api.v1.content.router import router as content_router
 from app.api.v1.endpoints import health
 from app.api.v1.router import api_router
 from app.core.config import settings
@@ -45,4 +47,6 @@ app.add_middleware(
 
 app.include_router(health.router, tags=["Health"])
 app.include_router(auth_router, prefix="/api/auth")
+app.include_router(blog_router, prefix="/api/blog", tags=["Blog"])
+app.include_router(content_router, prefix="/api/content", tags=["Content"])
 app.include_router(api_router, prefix="/api/v1")

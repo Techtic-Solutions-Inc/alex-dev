@@ -4,7 +4,7 @@ from logging.config import fileConfig
 from alembic import context
 from app.core.config import settings, sync_database_url
 from app.db.base import Base
-from app.models import User  # noqa: F401 — register models for autogenerate
+from app.models import Blog, Content, User  # noqa: F401 — register models for autogenerate
 from sqlalchemy import engine_from_config, pool
 
 config = context.config

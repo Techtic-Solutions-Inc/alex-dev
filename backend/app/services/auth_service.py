@@ -37,6 +37,7 @@ class AuthService:
             last_name=payload.last_name,
             hashed_password=hash_password(payload.password),
             is_locked=False,
+            role="user",
         )
         return self.user_repository.create(user)
 
@@ -66,7 +67,7 @@ class AuthService:
         )
         expires_delta = timedelta(minutes=expiry_minutes)
         access_token = create_access_token(
-            data={"sub": str(user.id)},
+            data={"sub": str(user.id), "role": user.role},
             expires_delta=expires_delta,
         )
 

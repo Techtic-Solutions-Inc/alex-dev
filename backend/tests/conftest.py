@@ -29,8 +29,15 @@ _load_env_test()
 from alembic import command
 from alembic.config import Config
 from app.core.config import settings, sync_database_url
+from app.core.security import create_access_token
 from app.dependencies.db import get_db
 from app.main import app
+
+
+def auth_header(user_id: str, role: str = "user") -> dict[str, str]:
+    """Build an Authorization header for test requests."""
+    token = create_access_token({"sub": user_id, "role": role})
+    return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture(scope="session")

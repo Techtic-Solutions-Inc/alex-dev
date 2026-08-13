@@ -45,8 +45,8 @@ async def test_signup_email_already_in_use(
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
         ),
         {
             "id": uuid.uuid4(),

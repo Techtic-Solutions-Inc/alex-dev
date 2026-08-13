@@ -16,3 +16,4 @@ class User(Base, UUIDPrimaryKeyMixin, TimestampMixin):
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     is_locked: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")

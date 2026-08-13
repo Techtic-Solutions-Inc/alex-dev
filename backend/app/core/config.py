@@ -24,9 +24,19 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "your_secret_key"
     JWT_EXPIRY: int = 30
     JWT_REMEMBER_ME_EXPIRY: int = 43200
+    PASSWORD_RESET_TOKEN_EXPIRY: int = 30
     LOG_LEVEL: str = "INFO"
     CORS_ORIGINS: list[str] = ["*"]
     RATE_LIMIT: str = "100/minute"
+    FRONTEND_URL: str = "http://localhost:3000"
+    SENDGRID_API_KEY: str = ""
+    SENDGRID_FROM_EMAIL: str = "noreply@example.com"
+    SENDGRID_FROM_NAME: str = "Support"
+    GOOGLE_ANALYTICS_MEASUREMENT_ID: str = ""
+    GOOGLE_ANALYTICS_API_SECRET: str = ""
+    GOOGLE_ANALYTICS_ENABLED: bool = False
+    STRIPE_SECRET_KEY: str = ""
+    STRIPE_ENABLED: bool = False
 
 
 settings = Settings()
