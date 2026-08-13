@@ -152,11 +152,18 @@ def _authenticated_user_id(current_user: dict[str, Any]) -> str:
         "- Returns only the authenticated user's own details."
     ),
     tags=["Content Library"],
-    operationId="getUserDetails",
     responses={**_COMMON_ERROR_RESPONSES},
     dependencies=[Depends(require_user_role)],
 )
 async def get_user_details(
+    user_id: UUID | None = Query(
+        default=None,
+        description=(
+            "Optional user UUID. When provided, must match the authenticated "
+            "user; otherwise the API returns 403."
+        ),
+        examples=["550e8400-e29b-41d4-a716-446655440000"],
+    ),
     current_user: dict[str, Any] = Depends(require_user_role),
     db: Session = Depends(get_db),
 ) -> UserDetailsResponse:
@@ -167,6 +174,13 @@ async def get_user_details(
     - **name**: User's display name
     - **ai_credit_usage**: AI credit usage details
     """
-    user_id = _authenticated_user_id(current_user)
     service = ContentLibraryService(db)
-    return await service.get_user_details(user_id)
+    details = service.get_user_details(
+        _authenticated_user_id(current_user),
+        requested_user_id=str(user_id) if user_id is not None else None,
+    )
+    return UserDetailsResponse(
+        success=True,
+        message="User details retrieved successfully",
+        data=details,
+    )

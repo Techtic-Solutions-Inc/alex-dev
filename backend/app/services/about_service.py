@@ -181,3 +181,24 @@ class AboutService:
             },
         )
         return data
+
+    def get_public_about_content(self) -> AboutData:
+        """Return About Us page content without requiring contact form fields."""
+        team_members = self._build_team_members()
+        roles = list(dict.fromkeys(member.role for member in team_members))
+
+        return AboutData(
+            id=_ABOUT_ID,
+            description=_ABOUT_DESCRIPTION,
+            link=_ABOUT_LINK,
+            roles=roles,
+            error=None,
+            team_members=team_members,
+            marketing_content=_MARKETING_CONTENT,
+            phone="",
+            terms_accepted=False,
+        )
+
+    def submit_contact_info(self, payload: AboutRequest) -> AboutData:
+        """Validate and accept About Us contact form submission."""
+        return self.get_about_content(payload)
