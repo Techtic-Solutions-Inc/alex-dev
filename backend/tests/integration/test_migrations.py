@@ -30,7 +30,26 @@ def test_initial_migration_creates_users_table(
         "last_name",
         "hashed_password",
         "is_locked",
+        "role",
     }
+
+    assert "blogs" in inspector.get_table_names()
+    assert "contents" in inspector.get_table_names()
+
+    content_columns = {
+        column["name"] for column in inspector.get_columns("contents")
+    }
+    assert {
+        "id",
+        "caption",
+        "description",
+        "phone",
+        "terms_accepted",
+        "privacy_policy",
+        "full_name",
+        "created_at",
+        "updated_at",
+    }.issubset(content_columns)
 
 
 def test_migration_rollback_drops_users_table(
@@ -51,8 +70,8 @@ def test_users_email_unique_constraint(db_session: Session) -> None:
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
         ),
         {
             "id": user_id,
@@ -69,8 +88,8 @@ def test_users_email_unique_constraint(db_session: Session) -> None:
         db_session.execute(
             text(
                 "INSERT INTO users "
-                "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-                "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+                "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+                "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
             ),
             {
                 "id": uuid.uuid4(),
@@ -88,8 +107,8 @@ def test_users_username_unique_constraint(db_session: Session) -> None:
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
         ),
         {
             "id": uuid.uuid4(),
@@ -106,8 +125,8 @@ def test_users_username_unique_constraint(db_session: Session) -> None:
         db_session.execute(
             text(
                 "INSERT INTO users "
-                "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-                "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+                "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+                "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
             ),
             {
                 "id": uuid.uuid4(),

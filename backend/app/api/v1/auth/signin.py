@@ -210,12 +210,13 @@ async def signin(
     _ensure_email_belongs_to_requesting_user(db, token, normalized_email)
 
     auth_service = AuthService(db)
-    token_data = auth_service.authenticate_user(body)
+    user, token_data = auth_service.authenticate_user(body)
 
     return SignInResponse(
         success=True,
         message="Signed in successfully",
-        data=SignInTokenData(
+        data=SignInTokenData.from_auth_result(
+            user,
             access_token=str(token_data["access_token"]),
             token_type=str(token_data["token_type"]),
             expires_in=int(token_data["expires_in"]),

@@ -31,6 +31,9 @@ async def test_signup_success(client: AsyncClient) -> None:
             "first_name": "John",
             "last_name": "Doe",
             "email": email,
+            "name": "John Doe",
+            "phone": "",
+            "phone_number": "",
         },
     }
     assert body["data"]["id"]
@@ -45,8 +48,8 @@ async def test_signup_email_already_in_use(
     db_session.execute(
         text(
             "INSERT INTO users "
-            "(id, username, email, first_name, last_name, hashed_password, is_locked) "
-            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false)"
+            "(id, username, email, first_name, last_name, hashed_password, is_locked, role) "
+            "VALUES (:id, :username, :email, :first_name, :last_name, :hashed_password, false, 'user')"
         ),
         {
             "id": uuid.uuid4(),
