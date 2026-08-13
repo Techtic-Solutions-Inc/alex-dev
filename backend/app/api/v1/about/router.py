@@ -1,5 +1,7 @@
-from fastapi import APIRouter, status, Query
+from fastapi import APIRouter, Depends, Query, status
+from pydantic import ValidationError
 
+from app.exceptions.http_exceptions import BadRequestException
 from app.schemas.about import AboutRequest, AboutResponse
 from app.schemas.common import ErrorResponse
 from app.services.about_service import AboutService
@@ -149,6 +151,37 @@ _COMMON_ERROR_RESPONSES = {
 }
 
 
+def _parse_about_request(
+    phone: str = Query(
+        ...,
+        description="Contact phone number (Mobile App Development field)",
+    ),
+    terms_accepted: bool = Query(
+        ...,
+        description=(
+            "Privacy Policy / Terms checkbox; must be true to confirm "
+            "acceptance of the Terms of Use and Privacy Policy"
+        ),
+    ),
+) -> AboutRequest:
+    """Validate About Us query parameters into an AboutRequest model."""
+    try:
+        return AboutRequest(phone=phone, terms_accepted=terms_accepted)
+    except ValidationError as exc:
+        details = []
+        for error in exc.errors():
+            field = ".".join(str(part) for part in error.get("loc", ()))
+            message = error.get("msg", "Invalid value")
+            if isinstance(message, str) and message.startswith("Value error, "):
+                message = message.removeprefix("Value error, ")
+            details.append({"field": field, "message": message})
+        raise BadRequestException(
+            message="Validation error",
+            code="VALIDATION_ERROR",
+            details=details,
+        ) from exc
+
+
 @router.get(
     "/",
     response_model=AboutResponse,
@@ -158,7 +191,16 @@ _COMMON_ERROR_RESPONSES = {
         "Retrieves content for the About Us screen in the Real Estate "
         "Professional module, including team members (Meet Our Team), "
         "marketing copy, and contact fields. This endpoint is **public** — "
-        "no authentication is required."
+        "no authentication is required.\n\n"
+        "Query parameters (Figma form fields):\n"
+        "- `phone` — Mobile App Development contact number\n"
+        "- `terms_accepted` — Privacy Policy / Terms checkbox; **must be true**\n\n"
+        "Returns `team_members` (name, role/roles, description, id, link, error), "
+        "`marketing_content`, `phone`, `terms_accepted`, plus page-level "
+        "`id`, `description`, `link`, `roles`, and `error` for frontend "
+        "integration. Missing or invalid fields return 400. "
+        "`terms_accepted` false or omitted returns 400. "
+        "Interactions are tracked via Google Analytics when configured."
     ),
     tags=["About"],
     responses={
@@ -169,42 +211,14 @@ _COMMON_ERROR_RESPONSES = {
         **_COMMON_ERROR_RESPONSES,
     },
 )
-async def get_about() -> AboutResponse:
+async def get_about(
+    params: AboutRequest = Depends(_parse_about_request),
+) -> AboutResponse:
     """Return About Us page content (public)."""
     service = AboutService()
-    about_data = service.get_about_content()
+    about_data = service.get_about_content(params)
     return AboutResponse(
         success=True,
         message="About Us content retrieved successfully",
-        data=about_data,
-    )
-
-
-@router.post(
-    "/contact",
-    response_model=AboutResponse,
-    status_code=status.HTTP_200_OK,
-    summary="Submit contact information",
-    description=(
-        "Submits contact information for the About Us page. Requires "
-        "`phone` and `terms_accepted` fields."
-    ),
-    tags=["About"],
-    responses={
-        200: {
-            "description": "Contact information submitted successfully",
-            "model": AboutResponse,
-        },
-        **_COMMON_ERROR_RESPONSES,
-    },
-)
-async def submit_contact_info(phone: str = Query(...), terms_accepted: bool = Query(...)) -> AboutResponse:
-    """Submit contact information for the About Us page."""
-    body = AboutRequest(phone=phone, terms_accepted=terms_accepted)
-    service = AboutService()
-    about_data = service.submit_contact_info(body)
-    return AboutResponse(
-        success=True,
-        message="Contact information submitted successfully",
         data=about_data,
     )
