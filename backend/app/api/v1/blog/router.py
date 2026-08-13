@@ -13,7 +13,14 @@ from app.schemas.blog import (
     BlogResponse,
     BlogUpdateRequest,
 )
+from app.schemas.blog_details import (
+    BlogDetailsGetResponse,
+    BlogDetailsSubmissionResponse,
+    BlogDetailsSubmitRequest,
+    BlogDetailsUpdateRequest,
+)
 from app.schemas.common import ErrorResponse
+from app.services.blog_detail_service import BlogDetailService
 from app.services.blog_service import BlogService
 
 router = APIRouter()
@@ -144,6 +151,304 @@ _COMMON_ERROR_RESPONSES = {
 
 def _user_id(current_user: dict[str, Any]) -> str | None:
     return str(current_user.get("sub")) if current_user.get("sub") else None
+
+
+_DETAILS_ERROR_RESPONSES = {
+    400: {
+        "description": "Invalid input or validation failure",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "examples": {
+                    "validation_error": {
+                        "summary": "Missing or invalid fields",
+                        "value": {
+                            "success": False,
+                            "message": "Validation error",
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "details": [
+                                    {
+                                        "field": "first_name",
+                                        "message": "This field is required",
+                                    }
+                                ],
+                            },
+                        },
+                    },
+                    "invalid_email": {
+                        "summary": "Email format is invalid",
+                        "value": {
+                            "success": False,
+                            "message": "Validation error",
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "details": [
+                                    {
+                                        "field": "email",
+                                        "message": "Invalid email format",
+                                    }
+                                ],
+                            },
+                        },
+                    },
+                    "privacy_policy_not_accepted": {
+                        "summary": "Privacy Policy checkbox not checked",
+                        "value": {
+                            "success": False,
+                            "message": "Validation error",
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "details": [
+                                    {
+                                        "field": "privacy_policy_accepted",
+                                        "message": "You must accept the Privacy Policy",
+                                    }
+                                ],
+                            },
+                        },
+                    },
+                    "terms_not_accepted": {
+                        "summary": "Terms of Service checkbox not checked",
+                        "value": {
+                            "success": False,
+                            "message": "Validation error",
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "details": [
+                                    {
+                                        "field": "terms_of_service_accepted",
+                                        "message": (
+                                            "You must accept the Terms of Service"
+                                        ),
+                                    }
+                                ],
+                            },
+                        },
+                    },
+                    "sql_injection": {
+                        "summary": "Suspicious input detected",
+                        "value": {
+                            "success": False,
+                            "message": "Validation error",
+                            "error": {
+                                "code": "VALIDATION_ERROR",
+                                "details": [
+                                    {
+                                        "field": "message",
+                                        "message": (
+                                            "Invalid characters detected in message"
+                                        ),
+                                    }
+                                ],
+                            },
+                        },
+                    },
+                }
+            }
+        },
+    },
+    401: {
+        "description": "Authentication required",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Authentication required",
+                    "error": {"code": "UNAUTHORIZED", "details": None},
+                }
+            }
+        },
+    },
+    403: {
+        "description": "Insufficient permissions",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Access denied",
+                    "error": {"code": "FORBIDDEN", "details": None},
+                }
+            }
+        },
+    },
+    404: {
+        "description": "Blog details submission not found",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "Blog details submission not found",
+                    "error": {"code": "BLOG_DETAILS_NOT_FOUND", "details": None},
+                }
+            }
+        },
+    },
+    409: {
+        "description": "Resource conflict (not applicable)",
+        "model": ErrorResponse,
+    },
+    422: {
+        "description": "Validation error (mapped to 400)",
+        "model": ErrorResponse,
+    },
+    500: {
+        "description": "Internal server error",
+        "model": ErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "success": False,
+                    "message": "An unexpected error occurred",
+                    "error": {
+                        "code": "INTERNAL_SERVER_ERROR",
+                        "details": None,
+                    },
+                }
+            }
+        },
+    },
+}
+
+
+@router.get(
+    "/details",
+    response_model=BlogDetailsGetResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get Blog Details page content",
+    description=(
+        "Retrieves the Blog Details screen content including headings, body text, "
+        "sections, and additional information. This endpoint is **public** — no "
+        "authentication is required."
+    ),
+    tags=["Blog Details"],
+    responses={
+        200: {
+            "description": "Blog details retrieved successfully",
+            "model": BlogDetailsGetResponse,
+        },
+        **_DETAILS_ERROR_RESPONSES,
+    },
+)
+async def get_blog_details(
+    db: Session = Depends(get_db),
+) -> BlogDetailsGetResponse:
+    """Return Blog Details page content (public)."""
+    service = BlogDetailService(db)
+    details_data = service.get_blog_details()
+    return BlogDetailsGetResponse(
+        success=True,
+        message="Blog details retrieved successfully",
+        data=details_data,
+    )
+
+
+@router.post(
+    "/details",
+    response_model=BlogDetailsSubmissionResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Submit blog details contact form",
+    description=(
+        "Submits user contact information for the Blog Details screen including "
+        "`first_name`, `last_name`, `email`, `phone_number`, and `message`. "
+        "Requires an authenticated user. Both `privacy_policy_accepted` and "
+        "`terms_of_service_accepted` must be true. All fields are required."
+    ),
+    tags=["Blog Details"],
+    responses={
+        201: {
+            "description": "Blog details submitted successfully",
+            "model": BlogDetailsSubmissionResponse,
+        },
+        **_DETAILS_ERROR_RESPONSES,
+    },
+)
+async def submit_blog_details(
+    body: BlogDetailsSubmitRequest,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_user_role),
+) -> BlogDetailsSubmissionResponse:
+    """Submit blog details contact form (authenticated users)."""
+    service = BlogDetailService(db)
+    submission_data = service.create_blog_details(
+        body,
+        user_id=_user_id(current_user),
+    )
+    return BlogDetailsSubmissionResponse(
+        success=True,
+        message="Blog details submitted successfully",
+        data=submission_data,
+    )
+
+
+@router.put(
+    "/details/{detail_id}",
+    response_model=BlogDetailsSubmissionResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update a blog details submission",
+    description=(
+        "Updates an existing blog details submission by UUID. Accepts any subset "
+        "of `first_name`, `last_name`, `email`, `phone_number`, `message`, "
+        "`privacy_policy_accepted`, and `terms_of_service_accepted`. Requires an "
+        "authenticated user. When consent fields are provided they must be true. "
+        "Returns 404 when the submission does not exist."
+    ),
+    tags=["Blog Details"],
+    responses={
+        200: {
+            "description": "Blog details updated successfully",
+            "model": BlogDetailsSubmissionResponse,
+        },
+        **_DETAILS_ERROR_RESPONSES,
+    },
+)
+async def update_blog_details(
+    detail_id: UUID,
+    body: BlogDetailsUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_user_role),
+) -> BlogDetailsSubmissionResponse:
+    """Update an existing blog details submission (authenticated users)."""
+    service = BlogDetailService(db)
+    submission_data = service.update_blog_details(
+        detail_id,
+        body,
+        user_id=_user_id(current_user),
+    )
+    return BlogDetailsSubmissionResponse(
+        success=True,
+        message="Blog details updated successfully",
+        data=submission_data,
+    )
+
+
+@router.delete(
+    "/details/{detail_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Delete a blog details submission",
+    description=(
+        "Permanently deletes a blog details submission by UUID. Requires an "
+        "authenticated user. Returns 204 with no body on success and 404 when "
+        "the submission does not exist."
+    ),
+    tags=["Blog Details"],
+    responses={
+        204: {"description": "Blog details submission deleted successfully"},
+        **_DETAILS_ERROR_RESPONSES,
+    },
+)
+async def delete_blog_details(
+    detail_id: UUID,
+    db: Session = Depends(get_db),
+    current_user: dict[str, Any] = Depends(require_user_role),
+) -> Response:
+    """Delete a blog details submission (authenticated users)."""
+    service = BlogDetailService(db)
+    service.delete_blog_details(detail_id, user_id=_user_id(current_user))
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 @router.get(
