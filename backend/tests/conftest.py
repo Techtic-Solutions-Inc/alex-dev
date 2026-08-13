@@ -3,15 +3,10 @@ from collections.abc import AsyncIterator, Iterator
 from pathlib import Path
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
-
-from app.core.config import settings, sync_database_url
-from app.core.security import create_access_token
-from app.dependencies.db import get_db
-from app.main import app
 
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 _ENV_TEST = _BACKEND_DIR / ".env.test"
@@ -33,6 +28,10 @@ _load_env_test()
 
 from alembic import command
 from alembic.config import Config
+from app.core.config import settings, sync_database_url
+from app.core.security import create_access_token
+from app.dependencies.db import get_db
+from app.main import app
 
 
 def auth_header(user_id: str, role: str = "user") -> dict[str, str]:
@@ -62,33 +61,21 @@ def db_session(db_engine: Engine, alembic_config: Config) -> Iterator[Session]:
     connection = db_engine.connect()
     transaction = connection.begin()
     session = sessionmaker(bind=connection)()
-    yield session
-    session.close()
-    transaction.rollback()
-    connection.close()
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture
-def client() -> AsyncIterator[AsyncClient]:
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        yield client
+async def client(db_session: Session) -> AsyncIterator[AsyncClient]:
+    def override_get_db() -> Iterator[Session]:
+        yield db_session
 
-
-@pytest.fixture
-def admin_auth_header() -> dict[str, str]:
-    return auth_header("admin-id", "admin")
-
-
-@pytest.fixture
-def user_auth_header() -> dict[str, str]:
-    return auth_header("user-id", "user")
-
-
-@pytest.fixture
-def viewer_auth_header() -> dict[str, str]:
-    return auth_header("viewer-id", "viewer")
-
-
-@pytest.fixture
-def inactive_auth_header() -> dict[str, str]:
-    return auth_header("inactive-id", "user")
+    app.dependency_overrides[get_db] = override_get_db
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as http_client:
+        yield http_client
+    app.dependency_overrides.clear()
