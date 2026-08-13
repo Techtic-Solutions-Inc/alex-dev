@@ -2,7 +2,6 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from sqlalchemy.orm import Session
 from tests.conftest import auth_header
 
 VALID_BLOG_PAYLOAD = {
