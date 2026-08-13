@@ -31,6 +31,15 @@ def test_initial_migration_creates_users_table(
         "hashed_password",
         "is_locked",
         "role",
+        "mobile_number",
+        "bio",
+        "address_street",
+        "address_city",
+        "address_state",
+        "address_zip",
+        "address_country",
+        "time_zone",
+        "ai_credit_usage",
     }
 
     assert "blogs" in inspector.get_table_names()
