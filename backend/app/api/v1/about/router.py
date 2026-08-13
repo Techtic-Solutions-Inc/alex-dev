@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Query
 
 from app.schemas.about import AboutRequest, AboutResponse
 from app.schemas.common import ErrorResponse
@@ -150,7 +150,7 @@ _COMMON_ERROR_RESPONSES = {
 
 
 @router.get(
-    "",
+    "/",
     response_model=AboutResponse,
     status_code=status.HTTP_200_OK,
     summary="Get About Us page content",
@@ -158,16 +158,7 @@ _COMMON_ERROR_RESPONSES = {
         "Retrieves content for the About Us screen in the Real Estate "
         "Professional module, including team members (Meet Our Team), "
         "marketing copy, and contact fields. This endpoint is **public** — "
-        "no authentication is required.\n\n"
-        "Request body (Figma form fields):\n"
-        "- `phone` — Mobile App Development contact number\n"
-        "- `terms_accepted` — Privacy Policy / Terms checkbox; **must be true**\n\n"
-        "Returns `team_members` (name, role/roles, description, id, link, error), "
-        "`marketing_content`, `phone`, `terms_accepted`, plus page-level "
-        "`id`, `description`, `link`, `roles`, and `error` for frontend "
-        "integration. Missing or invalid fields return 400. "
-        "`terms_accepted` false or omitted returns 400. "
-        "Interactions are tracked via Google Analytics when configured."
+        "no authentication is required."
     ),
     tags=["About"],
     responses={
@@ -178,12 +169,42 @@ _COMMON_ERROR_RESPONSES = {
         **_COMMON_ERROR_RESPONSES,
     },
 )
-async def get_about(body: AboutRequest) -> AboutResponse:
+async def get_about() -> AboutResponse:
     """Return About Us page content (public)."""
     service = AboutService()
-    about_data = service.get_about_content(body)
+    about_data = service.get_about_content()
     return AboutResponse(
         success=True,
         message="About Us content retrieved successfully",
+        data=about_data,
+    )
+
+
+@router.post(
+    "/contact",
+    response_model=AboutResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Submit contact information",
+    description=(
+        "Submits contact information for the About Us page. Requires "
+        "`phone` and `terms_accepted` fields."
+    ),
+    tags=["About"],
+    responses={
+        200: {
+            "description": "Contact information submitted successfully",
+            "model": AboutResponse,
+        },
+        **_COMMON_ERROR_RESPONSES,
+    },
+)
+async def submit_contact_info(phone: str = Query(...), terms_accepted: bool = Query(...)) -> AboutResponse:
+    """Submit contact information for the About Us page."""
+    body = AboutRequest(phone=phone, terms_accepted=terms_accepted)
+    service = AboutService()
+    about_data = service.submit_contact_info(body)
+    return AboutResponse(
+        success=True,
+        message="Contact information submitted successfully",
         data=about_data,
     )
