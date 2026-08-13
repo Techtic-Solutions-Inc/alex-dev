@@ -2,6 +2,8 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.db import get_db
+from app.exceptions.http_exceptions import NotFoundException
+from app.repositories.user_repository import UserRepository
 from app.schemas.common import ErrorResponse
 from app.schemas.password_recovery import (
     PasswordRecoveryRequest,
@@ -10,6 +12,16 @@ from app.schemas.password_recovery import (
 from app.services.password_recovery_service import PasswordRecoveryService
 
 router = APIRouter()
+
+
+def _ensure_registered_user(db: Session, normalized_email: str) -> None:
+    """Reject password recovery when no account exists for the email."""
+    user = UserRepository(db).get_by_email(normalized_email)
+    if user is None:
+        raise NotFoundException(
+            message="No account is associated with this email address",
+            code="USER_NOT_FOUND",
+        )
 
 
 @router.post(
@@ -145,6 +157,9 @@ async def password_recovery(
     db: Session = Depends(get_db),
 ) -> PasswordRecoveryResponse:
     """Send a time-limited password reset email to a registered user."""
+    normalized_email = body.email.strip().lower()
+    _ensure_registered_user(db, normalized_email)
+
     service = PasswordRecoveryService(db)
     data = service.initiate_password_recovery(body)
 
