@@ -2,7 +2,6 @@ import uuid
 from unittest.mock import MagicMock
 
 import pytest
-
 from app.exceptions.http_exceptions import ForbiddenException, NotFoundException
 from app.models.user import User
 from app.services.content_library_service import ContentLibraryService

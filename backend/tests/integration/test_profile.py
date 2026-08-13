@@ -1,8 +1,6 @@
 import pytest
 from httpx import AsyncClient
 
-from app.main import app
-from app.core.security import create_access_token
 
 @pytest.mark.asyncio
 async def test_get_profile_happy_path(async_client: AsyncClient, user_token_headers):

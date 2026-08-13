@@ -2,7 +2,6 @@ import re
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
-
 _MOBILE_PATTERN = re.compile(r"^\+?[\d\s\-().]{7,20}$")
 _PASSWORD_LETTER = re.compile(r"[A-Za-z]")
 _PASSWORD_DIGIT = re.compile(r"\d")
@@ -211,19 +210,19 @@ class ProfileData(BaseModel):
     @classmethod
     def from_user(cls, user: object) -> "ProfileData":
         return cls(
-            first_name=str(getattr(user, "first_name") or ""),
-            last_name=str(getattr(user, "last_name") or ""),
-            email=getattr(user, "email"),
-            mobile_number=str(getattr(user, "mobile_number") or ""),
-            bio=str(getattr(user, "bio") or ""),
+            first_name=str(user.first_name or ""),
+            last_name=str(user.last_name or ""),
+            email=user.email,
+            mobile_number=str(user.mobile_number or ""),
+            bio=str(user.bio or ""),
             address=ProfileAddressData(
-                street=str(getattr(user, "address_street") or ""),
-                city=str(getattr(user, "address_city") or ""),
-                state=str(getattr(user, "address_state") or ""),
-                zip=str(getattr(user, "address_zip") or ""),
-                country=str(getattr(user, "address_country") or ""),
+                street=str(user.address_street or ""),
+                city=str(user.address_city or ""),
+                state=str(user.address_state or ""),
+                zip=str(user.address_zip or ""),
+                country=str(user.address_country or ""),
             ),
-            time_zone=str(getattr(user, "time_zone") or ""),
+            time_zone=str(user.time_zone or ""),
         )
 
 

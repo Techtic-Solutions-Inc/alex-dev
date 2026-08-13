@@ -11,8 +11,8 @@ from app.api.v1.auth.router import auth_router
 from app.api.v1.blog.router import router as blog_router
 from app.api.v1.content.router import router as content_router
 from app.api.v1.content_library.router import router as content_library_router
-from app.api.v1.profile.router import router as profile_router
 from app.api.v1.endpoints import health
+from app.api.v1.profile.router import router as profile_router
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.logging import setup_logging

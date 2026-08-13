@@ -5,7 +5,6 @@ from app.core.security import hash_password
 from httpx import AsyncClient
 from sqlalchemy import text
 from sqlalchemy.orm import Session
-
 from tests.conftest import auth_header
 
 

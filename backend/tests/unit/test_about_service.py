@@ -1,7 +1,6 @@
 from unittest.mock import MagicMock
 
 import pytest
-
 from app.exceptions.http_exceptions import BadRequestException
 from app.schemas.about import AboutRequest
 from app.services.about_service import AboutService

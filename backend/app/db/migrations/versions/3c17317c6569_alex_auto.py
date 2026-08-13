@@ -5,17 +5,13 @@ Revises: 007_add_ai_credit_usage
 Create Date: 2026-08-13 15:23:52.934730
 
 """
-from typing import Sequence, Union
-
-from alembic import op
-import sqlalchemy as sa
-
+from collections.abc import Sequence
 
 # revision identifiers, used by Alembic.
 revision: str = '3c17317c6569'
-down_revision: Union[str, None] = '007_add_ai_credit_usage'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | None = '007_add_ai_credit_usage'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
