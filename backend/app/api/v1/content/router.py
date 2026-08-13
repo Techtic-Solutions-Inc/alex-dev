@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.dependencies.db import get_db
-from app.middleware.auth import get_current_user
+from app.middleware.auth import require_user_role
 from app.schemas.common import ErrorResponse
 from app.schemas.content import (
     ContentCreateRequest,
@@ -189,7 +189,7 @@ def _user_id(current_user: dict[str, Any]) -> str | None:
 async def create_content(
     body: ContentCreateRequest,
     db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(require_user_role),
 ) -> ContentResponse:
     """Create new content details (authenticated users only)."""
     service = ContentService(db)
@@ -262,7 +262,7 @@ async def update_content(
     content_id: UUID,
     body: ContentUpdateRequest,
     db: Session = Depends(get_db),
-    current_user: dict[str, Any] = Depends(get_current_user),
+    current_user: dict[str, Any] = Depends(require_user_role),
 ) -> ContentResponse:
     """Update existing content details (authenticated users only)."""
     service = ContentService(db)
