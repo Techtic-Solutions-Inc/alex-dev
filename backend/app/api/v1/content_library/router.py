@@ -149,55 +149,24 @@ def _authenticated_user_id(current_user: dict[str, Any]) -> str:
         "`ai_credit_usage`.\n\n"
         "Authorization:\n"
         "- Requires a valid JWT access token with a user or admin role.\n"
-        "- Returns only the authenticated user's own details.\n"
-        "- Optional query parameter `user_id` may be supplied for client-side "
-        "verification; if it does not match the authenticated user, the "
-        "request fails with **403** (`USER_DETAILS_FORBIDDEN`).\n\n"
-        "Unauthenticated requests receive **401**. Missing users receive "
-        "**404** (`USER_NOT_FOUND`)."
+        "- Returns only the authenticated user's own details."
     ),
     tags=["Content Library"],
-    responses={
-        200: {
-            "description": "User details retrieved successfully",
-            "model": UserDetailsResponse,
-            "content": {
-                "application/json": {
-                    "example": {
-                        "success": True,
-                        "message": "User details retrieved successfully",
-                        "data": {
-                            "user_id": "550e8400-e29b-41d4-a716-446655440000",
-                            "name": "John Doe",
-                            "ai_credit_usage": 42,
-                        },
-                    }
-                }
-            },
-        },
-        **_COMMON_ERROR_RESPONSES,
-    },
+    operationId="getUserDetails",
+    responses={**_COMMON_ERROR_RESPONSES},
+    dependencies=[Depends(require_user_role)],
 )
 async def get_user_details(
-    user_id: UUID | None = Query(
-        default=None,
-        description=(
-            "Optional user UUID. When provided, must match the authenticated "
-            "user; otherwise the API returns 403."
-        ),
-        examples=["550e8400-e29b-41d4-a716-446655440000"],
-    ),
-    db: Session = Depends(get_db),
     current_user: dict[str, Any] = Depends(require_user_role),
+    db: Session = Depends(get_db),
 ) -> UserDetailsResponse:
-    """Return the authenticated user's Content Library details."""
+    """
+    Fetches the user details for the authenticated user.
+
+    - **user_id**: Unique identifier for the user
+    - **name**: User's display name
+    - **ai_credit_usage**: AI credit usage details
+    """
+    user_id = _authenticated_user_id(current_user)
     service = ContentLibraryService(db)
-    details = service.get_user_details(
-        _authenticated_user_id(current_user),
-        requested_user_id=str(user_id) if user_id is not None else None,
-    )
-    return UserDetailsResponse(
-        success=True,
-        message="User details retrieved successfully",
-        data=details,
-    )
+    return await service.get_user_details(user_id)
