@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Response, status
 
 from app.schemas.common import ErrorResponse
 from app.schemas.health import HealthResponse
@@ -55,4 +55,17 @@ async def health_check() -> HealthResponse:
         success=True,
         message="Service is healthy",
         data={"status": "healthy"},
+    )
+
+
+@router.options(
+    "/health",
+    status_code=status.HTTP_200_OK,
+    include_in_schema=False,
+)
+async def health_check_options() -> Response:
+    """Support CORS preflight probes on the health endpoint."""
+    return Response(
+        status_code=status.HTTP_200_OK,
+        headers={"Access-Control-Allow-Origin": "*"},
     )

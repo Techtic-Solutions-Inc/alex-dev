@@ -1,8 +1,10 @@
+import logging
 import time
 
 from fastapi import Request, Response
-from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+
+logger = logging.getLogger(__name__)
 
 
 class LoggingMiddleware(BaseHTTPMiddleware):
@@ -14,12 +16,12 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         call_next: RequestResponseEndpoint,
     ) -> Response:
         start_time = time.perf_counter()
-        logger.info("Request: {method} {url}", method=request.method, url=request.url)
+        logger.info("Request: %s %s", request.method, request.url.path)
         response = await call_next(request)
         duration_ms = (time.perf_counter() - start_time) * 1000
         logger.info(
-            "Response: {status} ({duration:.2f}ms)",
-            status=response.status_code,
-            duration=duration_ms,
+            "Response: %s (%.2fms)",
+            response.status_code,
+            duration_ms,
         )
         return response
