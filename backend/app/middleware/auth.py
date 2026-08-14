@@ -14,6 +14,16 @@ oauth2_scheme = OAuth2PasswordBearer(
 _VALID_USER_ROLES = frozenset({"user", "admin"})
 
 
+def assert_valid_user_role(payload: dict[str, Any]) -> None:
+    """Reject tokens whose role is not an active user or admin."""
+    role = payload.get("role", "user")
+    if role not in _VALID_USER_ROLES:
+        raise ForbiddenException(
+            message="Access denied",
+            code="FORBIDDEN",
+        )
+
+
 async def get_current_user(
     token: str | None = Depends(oauth2_scheme),
 ) -> dict[str, Any]:
@@ -37,12 +47,7 @@ async def require_user_role(
     current_user: dict[str, Any] = Depends(get_current_user),
 ) -> dict[str, Any]:
     """Require an authenticated user with user or admin role."""
-    role = current_user.get("role", "user")
-    if role not in _VALID_USER_ROLES:
-        raise ForbiddenException(
-            message="Access denied",
-            code="FORBIDDEN",
-        )
+    assert_valid_user_role(current_user)
     return current_user
 
 

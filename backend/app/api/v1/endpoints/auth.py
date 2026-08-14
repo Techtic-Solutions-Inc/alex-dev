@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.security import create_access_token, create_refresh_token, verify_token
 from app.exceptions.http_exceptions import UnauthorizedException
-from app.middleware.auth import oauth2_scheme
+from app.middleware.auth import assert_valid_user_role, oauth2_scheme
 from app.schemas.auth import RefreshTokenRequest, RefreshTokenResponse, TokenData
 
 router = APIRouter()
@@ -21,12 +21,14 @@ async def _require_valid_token(
             code="UNAUTHORIZED",
         )
     try:
-        return verify_token(token, expected_type=None)
+        payload = verify_token(token, expected_type=None)
     except ValueError:
         raise UnauthorizedException(
             message="Invalid or expired token",
             code="INVALID_TOKEN",
         )
+    assert_valid_user_role(payload)
+    return payload
 
 
 @protected_router.get("/protected-endpoint")
@@ -46,6 +48,8 @@ async def refresh_token(body: RefreshTokenRequest) -> RefreshTokenResponse:
             message="Invalid or expired token",
             code="INVALID_TOKEN",
         )
+
+    assert_valid_user_role(payload)
 
     token_data = {
         "sub": payload["sub"],
