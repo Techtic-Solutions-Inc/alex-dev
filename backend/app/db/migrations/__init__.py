@@ -1,0 +1,1 @@
+"""Aerich migration metadata."""
