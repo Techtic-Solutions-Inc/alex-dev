@@ -1,7 +1,6 @@
 import pytest
-from pydantic import ValidationError
-
 from app.schemas.example import ExampleSchema
+from pydantic import ValidationError
 
 
 def test_example_schema_validation() -> None:

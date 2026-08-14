@@ -25,10 +25,10 @@ def _load_env_test() -> None:
 
 _load_env_test()
 
-from app.core.config import settings  # noqa: E402
-from app.core.security import create_refresh_token  # noqa: E402
-from app.db.session import db  # noqa: E402
-from app.main import app  # noqa: E402
+from app.core.config import settings
+from app.core.security import create_refresh_token
+from app.db.session import db
+from app.main import app
 
 
 @pytest.fixture(scope="module")
