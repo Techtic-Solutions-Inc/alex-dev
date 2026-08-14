@@ -21,6 +21,15 @@ router = APIRouter()
         200: {
             "description": "Service is healthy",
             "model": HealthResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": True,
+                        "message": "Service is healthy",
+                        "data": {"status": "healthy"},
+                    }
+                }
+            },
         },
         500: {
             "description": "Internal server error",

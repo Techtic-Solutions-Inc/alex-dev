@@ -70,6 +70,18 @@ router = APIRouter()
         500: {
             "description": "Internal server error",
             "model": ErrorResponse,
+            "content": {
+                "application/json": {
+                    "example": {
+                        "success": False,
+                        "message": "Internal server error",
+                        "error": {
+                            "code": "INTERNAL_ERROR",
+                            "details": None,
+                        },
+                    }
+                }
+            },
         },
     },
 )
