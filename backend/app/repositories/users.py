@@ -84,3 +84,11 @@ class UserRepository:
     def revoke_all_sessions(self, user_id: str) -> None:
         """Invalidate every outstanding refresh credential after suspected replay."""
         self._sessions.update_many(
+            {"user_id": user_id, "revoked_at": None},
+            {"$set": {"revoked_at": datetime.now(UTC)}},
+        )
+
+    @staticmethod
+    def _hash_token_id(token_id: str) -> str:
+        """Hash refresh token identifiers before persisting them."""
+        return hashlib.sha256(token_id.encode("utf-8")).hexdigest()

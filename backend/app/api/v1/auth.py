@@ -1,55 +1,109 @@
+"""Authentication endpoints."""
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, EmailStr, Field
+from typing import Annotated
 
-router = APIRouter()
+from fastapi import APIRouter, Depends, status
+from pymongo.database import Database
 
-class SignupRequest(BaseModel):
-    first_name: str = Field(..., description="User's first name", example="John")
-    last_name: str = Field(..., description="User's last name", example="Doe")
-    email: EmailStr = Field(..., description="User's email address", example="john.doe@example.com")
-    password: str = Field(..., description="User's password", example="strongpassword123")
-    terms_accepted: bool = Field(..., description="User has accepted terms and conditions", example=True)
+from app.db.mongo import get_database
+from app.repositories.users import UserRepository
+from app.schemas.auth import (
+    EmailVerificationData,
+    LoginRequest,
+    RefreshRequest,
+    SignupData,
+    SignupRequest,
+    TokenData,
+)
+from app.schemas.common import ErrorResponse, SuccessResponse
+from app.services.auth import AuthService
 
-class SignupResponse(BaseModel):
-    user_id: int = Field(..., description="Unique identifier for the user", example=123)
-    message: str = Field(..., description="Success message", example="User registered successfully")
+router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-class ErrorResponse(BaseModel):
-    success: bool = Field(..., description="Indicates if the request was successful", example=False)
-    message: str = Field(..., description="Error message", example="Invalid input")
-    error_code: int = Field(..., description="Specific error code", example=400)
 
-@router.post("/auth/signup", response_model=SignupResponse, responses={
-    400: {"model": ErrorResponse, "description": "Bad Request"},
-    409: {"model": ErrorResponse, "description": "Conflict"}
-})
-async def signup(body: SignupRequest):
-    """
-    Register a new user.
+def get_auth_service(
+    database: Annotated[Database, Depends(get_database)],
+) -> AuthService:
+    """Build the auth service for the active request database."""
+    return AuthService(UserRepository(database))
 
-    This endpoint allows a new user to register by providing their first name, last name, email, password, and acceptance of terms.
-    """
-    # Implementation goes here
-    pass
 
-class SigninRequest(BaseModel):
-    email: EmailStr = Field(..., description="User's email address", example="john.doe@example.com")
-    password: str = Field(..., description="User's password", example="strongpassword123")
+@router.post(
+    "/signup",
+    status_code=status.HTTP_201_CREATED,
+    summary="Register a new user account",
+    response_model=SuccessResponse[SignupData],
+    responses={
+        409: {"model": ErrorResponse, "description": "Email already registered."},
+        422: {"model": ErrorResponse, "description": "Validation failed."},
+    },
+)
+def signup(
+    payload: SignupRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> SuccessResponse[SignupData]:
+    """Create an account and return an authenticated session."""
+    data = service.signup(payload)
+    return SuccessResponse(
+        message="Account created successfully.",
+        data=SignupData(**data),
+    )
 
-class SigninResponse(BaseModel):
-    access_token: str = Field(..., description="JWT access token", example="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
-    token_type: str = Field(..., description="Type of the token", example="bearer")
 
-@router.post("/auth/signin", response_model=SigninResponse, responses={
-    401: {"model": ErrorResponse, "description": "Unauthorized"},
-    422: {"model": ErrorResponse, "description": "Unprocessable Entity"}
-})
-async def signin(body: SigninRequest):
-    """
-    Authenticate a user.
+@router.post(
+    "/login",
+    summary="Authenticate with email and password",
+    response_model=SuccessResponse[TokenData],
+    responses={
+        401: {"model": ErrorResponse, "description": "Invalid credentials."},
+        403: {"model": ErrorResponse, "description": "Account inactive."},
+        400: {"model": ErrorResponse, "description": "Validation failed."},
+    },
+)
+def login(
+    payload: LoginRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> SuccessResponse[TokenData]:
+    """Verify credentials and issue rotating session tokens."""
+    data = service.login(payload)
+    return SuccessResponse(message="Signed in successfully.", data=TokenData(**data))
 
-    This endpoint allows a user to authenticate by providing their email and password.
-    """
-    # Implementation goes here
-    pass
+
+@router.post(
+    "/refresh",
+    summary="Rotate a refresh token",
+    response_model=SuccessResponse[TokenData],
+    responses={
+        401: {"model": ErrorResponse, "description": "Invalid refresh token."},
+        403: {"model": ErrorResponse, "description": "Account inactive."},
+        422: {"model": ErrorResponse, "description": "Validation failed."},
+    },
+)
+def refresh(
+    payload: RefreshRequest,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> SuccessResponse[TokenData]:
+    """Exchange a single-use refresh token for a new session."""
+    data = service.refresh(payload.refresh_token)
+    return SuccessResponse(message="Session refreshed successfully.", data=TokenData(**data))
+
+
+@router.post(
+    "/verify-email",
+    summary="Confirm a user's email address",
+    response_model=SuccessResponse[EmailVerificationData],
+    responses={
+        400: {"model": ErrorResponse, "description": "Invalid verification token."},
+        404: {"model": ErrorResponse, "description": "User not found."},
+    },
+)
+def verify_email(
+    token: str,
+    service: Annotated[AuthService, Depends(get_auth_service)],
+) -> SuccessResponse[EmailVerificationData]:
+    """Mark an email address as verified using a signed token."""
+    data = service.verify_email(token)
+    return SuccessResponse(
+        message="Email verified successfully.",
+        data=EmailVerificationData(**data),
+    )

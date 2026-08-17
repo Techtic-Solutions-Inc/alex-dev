@@ -1,63 +1,75 @@
-import pytest
+"""Integration tests for the signup endpoint."""
+
 from httpx import AsyncClient
-from unittest.mock import patch
 
-@pytest.mark.asyncio
-async def test_user_registration_success(client: AsyncClient):
-    response = await client.post('/api/v1/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'StrongPassword123!',
-        'terms_accepted': True
-    })
+from test_helpers import signup_payload
+
+
+async def test_signup_success(client: AsyncClient) -> None:
+    response = await client.post("/api/v1/auth/signup", json=signup_payload())
+
     assert response.status_code == 201
-    assert response.json()['email'] == 'john.doe@example.com'
+    body = response.json()
+    assert body["success"] is True
+    assert body["message"] == "Account created successfully."
+    assert body["data"]["email"] == "john.doe@example.com"
+    assert body["data"]["first_name"] == "John"
+    assert body["data"]["last_name"] == "Doe"
+    assert body["data"]["email_verified"] is False
+    assert body["data"]["access_token"]
+    assert body["data"]["refresh_token"]
+    assert body["data"]["token_type"] == "bearer"
 
-@pytest.mark.asyncio
-async def test_user_registration_missing_field(client: AsyncClient):
-    response = await client.post('/api/v1/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'StrongPassword123!'
-    })
-    assert response.status_code == 400
-    assert 'terms_accepted' in response.json()['detail']
 
-@pytest.mark.asyncio
-async def test_user_registration_duplicate_email(client: AsyncClient, test_db):
-    test_db['users'].insert_one({'email': 'john.doe@example.com'})
-    response = await client.post('/api/v1/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'StrongPassword123!',
-        'terms_accepted': True
-    })
+async def test_signup_missing_terms(client: AsyncClient) -> None:
+    payload = signup_payload()
+    del payload["terms_accepted"]
+    response = await client.post("/api/v1/auth/signup", json=payload)
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert "terms_accepted" in body["error"]["details"]
+
+
+async def test_signup_duplicate_email(client: AsyncClient) -> None:
+    first = await client.post("/api/v1/auth/signup", json=signup_payload())
+    assert first.status_code == 201
+
+    response = await client.post(
+        "/api/v1/auth/signup",
+        json=signup_payload(email="john.doe@example.com"),
+    )
+
     assert response.status_code == 409
-    assert 'email' in response.json()['detail']
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "EMAIL_ALREADY_EXISTS"
+    assert "email" in body["error"]["details"]
 
-@pytest.mark.asyncio
-async def test_user_registration_weak_password(client: AsyncClient):
-    response = await client.post('/api/v1/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'weak',
-        'terms_accepted': True
-    })
-    assert response.status_code == 400
-    assert 'password' in response.json()['detail']
 
-@pytest.mark.asyncio
-async def test_user_registration_terms_not_accepted(client: AsyncClient):
-    response = await client.post('/api/v1/auth/signup', json={
-        'first_name': 'John',
-        'last_name': 'Doe',
-        'email': 'john.doe@example.com',
-        'password': 'StrongPassword123!',
-        'terms_accepted': False
-    })
-    assert response.status_code == 400
-    assert 'terms_accepted' in response.json()['detail']
+async def test_signup_weak_password(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/signup",
+        json=signup_payload(password="weak"),
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert "password" in body["error"]["details"]
+
+
+async def test_signup_terms_not_accepted(client: AsyncClient) -> None:
+    response = await client.post(
+        "/api/v1/auth/signup",
+        json=signup_payload(terms_accepted=False),
+    )
+
+    assert response.status_code == 422
+    body = response.json()
+    assert body["success"] is False
+    assert body["error"]["code"] == "VALIDATION_ERROR"
+    assert "terms_accepted" in body["error"]["details"]

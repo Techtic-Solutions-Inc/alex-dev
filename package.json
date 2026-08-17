@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "test": "cd backend && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -e '.[dev]' -q && APP_ENV=test .venv/bin/pytest -q tests ../tests"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/mongodb": "^4.0.6",
+    "@types/supertest": "^7.2.1",
+    "jest": "^30.4.2",
+    "mongoose": "^9.9.2",
+    "supertest": "^7.2.2",
+    "ts-jest": "^29.4.12"
+  }
+}
