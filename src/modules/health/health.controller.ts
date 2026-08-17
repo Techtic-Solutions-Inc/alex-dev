@@ -1,18 +1,18 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Headers } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '../../common/dto/api-response.dto';
-
-class HealthDataDto {
-  status!: 'UP';
-}
+import { AuthService, SessionBootstrap } from '../auth/auth.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
+  constructor(private readonly authService: AuthService) {}
+
   @Get()
   @ApiOperation({
     summary: 'Check API health',
-    description: 'Returns a lightweight liveness result. This endpoint does not expose infrastructure details.',
+    description:
+      'Returns a lightweight liveness result and the frontend session bootstrap shape. When an Authorization bearer token is supplied, user profile fields are populated; otherwise they are null.',
   })
   @ApiOkResponse({
     description: 'The API process is accepting requests.',
@@ -20,7 +20,15 @@ export class HealthController {
       example: {
         success: true,
         message: 'API is healthy',
-        data: { status: 'UP' },
+        data: {
+          status: 'UP',
+          id: null,
+          name: null,
+          first_name: null,
+          last_name: null,
+          email: null,
+          token: null,
+        },
       },
     },
   })
@@ -31,7 +39,10 @@ export class HealthController {
   @ApiResponse({ status: 409, description: 'Request conflict.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Validation failed.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 500, description: 'Unexpected server error', type: ApiErrorResponseDto })
-  check(): { message: string; data: HealthDataDto } {
-    return { message: 'API is healthy', data: { status: 'UP' } };
+  async check(@Headers('authorization') authorization?: string): Promise<{ message: string; data: SessionBootstrap }> {
+    return {
+      message: 'API is healthy',
+      data: await this.authService.resolveSession(authorization),
+    };
   }
 }

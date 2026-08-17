@@ -1,28 +1,31 @@
 import { INestApplication } from '@nestjs/common';
-import { Test, TestingModule } from '@nestjs/testing';
 import request = require('supertest');
-import { HealthModule } from '../src/modules/health/health.module';
+import { createTestApp } from './create-test-app';
 
 describe('Health endpoint (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [HealthModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await createTestApp();
   });
 
   afterAll(async () => {
     await app.close();
   });
 
-  it('GET /health returns an UP status', async () => {
-    await request(app.getHttpServer())
-      .get('/health')
-      .expect(200)
-      .expect({ message: 'API is healthy', data: { status: 'UP' } });
+  it('GET /health returns an UP status and frontend session bootstrap fields', async () => {
+    const response = await request(app.getHttpServer()).get('/health').expect(200);
+
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('API is healthy');
+    expect(response.body.data).toEqual({
+      status: 'UP',
+      id: null,
+      name: null,
+      first_name: null,
+      last_name: null,
+      email: null,
+      token: null,
+    });
   });
 });

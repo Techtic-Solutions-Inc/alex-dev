@@ -75,6 +75,9 @@ export class AuthController {
         message: 'Signed in successfully',
         data: {
           id: '66df0b7814b3e891e4ebcd21',
+          name: 'John Doe',
+          first_name: 'John',
+          last_name: 'Doe',
           email: 'john.doe@example.com',
           token: 'eyJhbGciOiJIUzI1NiJ9.access-token',
           accessToken: 'eyJhbGciOiJIUzI1NiJ9.access-token',

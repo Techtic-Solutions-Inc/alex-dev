@@ -30,11 +30,24 @@ export interface RegisteredUser {
 
 export interface LoginResult {
   id: string;
+  name: string;
+  first_name: string;
+  last_name: string;
   email: string;
   token: string;
   accessToken: string;
   refreshToken?: string;
   tokenType: 'Bearer';
+}
+
+export interface SessionBootstrap {
+  status: 'UP';
+  id: string | null;
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  token: string | null;
 }
 
 const scrypt = promisify(scryptCallback);
@@ -142,8 +155,7 @@ export class AuthService {
       }
 
       return {
-        id: user._id.toString(),
-        email: user.email,
+        ...this.toLoginUser(user),
         token: auth0Tokens.access_token,
         accessToken: auth0Tokens.access_token,
         ...(auth0Tokens.refresh_token ? { refreshToken: auth0Tokens.refresh_token } : {}),
@@ -161,10 +173,55 @@ export class AuthService {
 
     const tokens = this.issueTokenPair(user._id.toString());
     return {
-      id: user._id.toString(),
-      email: user.email,
+      ...this.toLoginUser(user),
       token: tokens.accessToken,
       ...tokens,
+    };
+  }
+
+  async resolveSession(authorization?: string): Promise<SessionBootstrap> {
+    const emptySession: SessionBootstrap = {
+      status: 'UP',
+      id: null,
+      name: null,
+      first_name: null,
+      last_name: null,
+      email: null,
+      token: null,
+    };
+
+    const token = this.extractOptionalBearerToken(authorization);
+    if (!token) {
+      return emptySession;
+    }
+
+    let payload: TokenPayload;
+    try {
+      payload = this.jwtService.verify<TokenPayload>(token, {
+        secret: this.configService.getOrThrow<string>('JWT_SECRET'),
+      });
+    } catch {
+      return emptySession;
+    }
+
+    if (!payload.sub || typeof payload.sub !== 'string' || payload.tokenUse === 'refresh') {
+      return emptySession;
+    }
+
+    const user = await this.userModel.findById(payload.sub).exec();
+    if (!user || user.is_active === false) {
+      return emptySession;
+    }
+
+    const profile = this.toRegisteredUser(user);
+    return {
+      status: 'UP',
+      id: profile.id,
+      name: profile.name,
+      first_name: profile.first_name,
+      last_name: profile.last_name,
+      email: profile.email,
+      token,
     };
   }
 
@@ -253,6 +310,21 @@ export class AuthService {
       email: user.email,
       email_verified: user.email_verified,
     };
+  }
+
+  private toLoginUser(user: UserDocument): Omit<LoginResult, 'token' | 'accessToken' | 'refreshToken' | 'tokenType'> {
+    return {
+      id: user._id.toString(),
+      name: `${user.first_name} ${user.last_name}`,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+    };
+  }
+
+  private extractOptionalBearerToken(authorization?: string): string | null {
+    const [scheme, token] = authorization?.split(' ') ?? [];
+    return scheme === 'Bearer' && token ? token : null;
   }
 
   private isDuplicateKeyError(error: unknown): boolean {

@@ -54,6 +54,15 @@ export class LoginUserResponseDto {
   @ApiProperty({ description: 'Public user identifier.', example: '66df0b7814b3e891e4ebcd21' })
   id!: string;
 
+  @ApiProperty({ description: 'Display name assembled from first and last name.', example: 'John Doe' })
+  name!: string;
+
+  @ApiProperty({ description: 'User given name.', example: 'John' })
+  first_name!: string;
+
+  @ApiProperty({ description: 'User family name.', example: 'Doe' })
+  last_name!: string;
+
   @ApiProperty({ description: 'Email address used to sign in.', example: 'john.doe@example.com' })
   email!: string;
 }
@@ -93,6 +102,9 @@ export class LoginResponseDto {
     description: 'Authenticated user and issued token pair. Passwords are never returned.',
     example: {
       id: '66df0b7814b3e891e4ebcd21',
+      name: 'John Doe',
+      first_name: 'John',
+      last_name: 'Doe',
       email: 'john.doe@example.com',
       token: 'eyJhbGciOiJIUzI1NiJ9.access-token',
       accessToken: 'eyJhbGciOiJIUzI1NiJ9.access-token',

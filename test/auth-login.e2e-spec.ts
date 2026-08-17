@@ -52,6 +52,9 @@ describe('Auth Login & Session (e2e)', () => {
     expect(response.body.message).toBe('Signed in successfully');
     expect(response.body.data).toEqual({
       id: expect.any(String),
+      name: 'John Doe',
+      first_name: 'John',
+      last_name: 'Doe',
       email,
       token: expect.any(String),
       accessToken: expect.any(String),
