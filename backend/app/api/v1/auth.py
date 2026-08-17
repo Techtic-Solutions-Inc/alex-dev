@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, Query, status
 from pymongo.database import Database
 
 from app.db.mongo import get_database
+from app.exceptions.http_exceptions import APIException
 from app.repositories.users import UserRepository
 from app.schemas.auth import (
     EmailVerificationData,
@@ -31,6 +32,13 @@ _common_errors = {
 }
 
 
+def get_user_repository(
+    database: Annotated[Database, Depends(get_database)],
+) -> UserRepository:
+    """Build the user repository for one request."""
+    return UserRepository(database)
+
+
 def get_auth_service(
     database: Annotated[Database, Depends(get_database)],
 ) -> AuthService:
@@ -53,8 +61,16 @@ def get_auth_service(
 def signup(
     body: SignupRequest,
     service: Annotated[AuthService, Depends(get_auth_service)],
+    repository: Annotated[UserRepository, Depends(get_user_repository)],
 ) -> SuccessResponse[SignupData]:
     """Register a new user from the documented JSON request body."""
+    if repository.get_by_email(str(body.email)):
+        raise APIException(
+            "An account with this email already exists.",
+            409,
+            "EMAIL_ALREADY_EXISTS",
+            {"email": ["An account already uses this email."]},
+        )
     return SuccessResponse(message="Account created.", data=service.signup(body))
 
 
