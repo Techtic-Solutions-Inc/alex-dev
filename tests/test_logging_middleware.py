@@ -1,10 +1,16 @@
-import pytest
-from unittest.mock import patch
-from src.middleware.logging_middleware import LoggingMiddleware
+"""Tests for request logging middleware."""
 
-@pytest.mark.order(5)
-def test_logging_middleware():
-    with patch('src.config.logger_config.logger.info') as mock_logger_info:
-        middleware = LoggingMiddleware()
-        middleware.use({'method': 'GET', 'url': '/test'}, {}, lambda: None)
-        mock_logger_info.assert_called_with('Request... GET /test')
+from fastapi.testclient import TestClient
+
+
+def test_logging_middleware_adds_request_id_header(client: TestClient) -> None:
+    response = client.get("/health")
+    assert response.status_code == 200
+    assert response.headers.get("x-request-id")
+
+
+def test_logging_middleware_preserves_supplied_request_id(client: TestClient) -> None:
+    request_id = "test-request-id-123"
+    response = client.get("/health", headers={"X-Request-ID": request_id})
+    assert response.status_code == 200
+    assert response.headers.get("x-request-id") == request_id

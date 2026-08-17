@@ -1,10 +1,11 @@
-import pytest
-import os
+"""Tests for lint/format tooling configuration."""
 
-@pytest.mark.order(10)
-def test_eslint_prettier_setup():
-    assert os.path.exists('.eslintrc.js'), "ESLint config file does not exist"
-    with open('.eslintrc.js', 'r') as file:
-        content = file.read()
-        assert 'plugin:prettier/recommended' in content
-        assert 'prettier/prettier' in content
+from pathlib import Path
+
+BACKEND_ROOT = Path(__file__).resolve().parent.parent / "backend"
+
+
+def test_ruff_configuration_exists() -> None:
+    pyproject = (BACKEND_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert "[tool.ruff" in pyproject
+    assert "select" in pyproject
