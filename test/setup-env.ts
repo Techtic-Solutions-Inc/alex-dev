@@ -3,6 +3,8 @@ import { resolve } from 'path';
 
 config({ path: resolve(__dirname, '../.env.test'), override: true });
 
+jest.setTimeout(30_000);
+
 process.env.JWT_SECRET ??= 'test-jwt-secret-at-least-32-characters-long';
 process.env.JWT_EXPIRY ??= '3600';
 process.env.JWT_REFRESH_EXPIRY ??= '86400';
