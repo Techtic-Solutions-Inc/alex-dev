@@ -64,9 +64,7 @@ describe('Auth Verify Email (e2e)', () => {
     expect(response.body.success).toBe(false);
     expect(response.body.message).toBe('Validation failed');
     expect(response.body.error.code).toBe('VALIDATION_ERROR');
-    expect(response.body.error.details.token).toEqual(
-      expect.arrayContaining(['token is required']),
-    );
+    expect(response.body.error.details.token).toEqual(expect.arrayContaining(['token is required']));
   });
 
   it('returns validation error for a malformed token', async () => {
@@ -126,10 +124,9 @@ describe('Auth Verify Email (e2e)', () => {
     expect(token).toBeDefined();
 
     const connection = app.get<Connection>(getConnectionToken());
-    await connection.collection('users').updateOne(
-      { email },
-      { $set: { verification_token_expires_at: new Date(Date.now() - 60_000) } },
-    );
+    await connection
+      .collection('users')
+      .updateOne({ email }, { $set: { verification_token_expires_at: new Date(Date.now() - 60_000) } });
 
     const response = await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token });
 
