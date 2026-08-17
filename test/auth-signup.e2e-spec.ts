@@ -45,11 +45,13 @@ describe('Auth Signup (e2e)', () => {
   });
 
   it('returns validation error when required fields are missing', async () => {
-    const response = await request(app.getHttpServer()).post('/api/auth/signup').send({
-      first_name: 'John',
-      email: uniqueEmail('signup.missing'),
-      password: 'StrongPassword123!',
-    });
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send({
+        first_name: 'John',
+        email: uniqueEmail('signup.missing'),
+        password: 'StrongPassword123!',
+      });
 
     expect(response.status).toBe(422);
     expect(response.body.success).toBe(false);
@@ -95,13 +97,15 @@ describe('Auth Signup (e2e)', () => {
   });
 
   it('returns validation error for a weak password', async () => {
-    const response = await request(app.getHttpServer()).post('/api/auth/signup').send({
-      first_name: 'John',
-      last_name: 'Doe',
-      email: uniqueEmail('signup.weak'),
-      password: 'weak',
-      terms_accepted: true,
-    });
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: uniqueEmail('signup.weak'),
+        password: 'weak',
+        terms_accepted: true,
+      });
 
     expect(response.status).toBe(422);
     expect(response.body.success).toBe(false);
@@ -116,13 +120,15 @@ describe('Auth Signup (e2e)', () => {
   });
 
   it('returns validation error when terms are not accepted', async () => {
-    const response = await request(app.getHttpServer()).post('/api/auth/signup').send({
-      first_name: 'John',
-      last_name: 'Doe',
-      email: uniqueEmail('signup.terms'),
-      password: 'StrongPassword123!',
-      terms_accepted: false,
-    });
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: uniqueEmail('signup.terms'),
+        password: 'StrongPassword123!',
+        terms_accepted: false,
+      });
 
     expect(response.status).toBe(422);
     expect(response.body.success).toBe(false);

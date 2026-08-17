@@ -116,10 +116,12 @@ describe('Auth Login & Session (e2e)', () => {
   });
 
   it('returns validation error for a weak password', async () => {
-    const response = await request(app.getHttpServer()).post('/api/auth/login').send({
-      email: uniqueEmail('login.weak-password'),
-      password: 'weak',
-    });
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({
+        email: uniqueEmail('login.weak-password'),
+        password: 'weak',
+      });
 
     expect(response.status).toBe(422);
     expect(response.body.success).toBe(false);
