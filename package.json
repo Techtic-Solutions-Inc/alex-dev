@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "start": "cd backend && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -e . -q && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}",
     "test": "cd backend && (test -d .venv || python3 -m venv .venv) && .venv/bin/pip install -e '.[dev]' -q && APP_ENV=test .venv/bin/pytest -q tests ../tests"
   },
   "devDependencies": {
