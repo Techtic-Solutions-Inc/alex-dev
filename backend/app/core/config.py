@@ -75,8 +75,10 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_secrets_for_environment(self) -> Self:
-        if self.app_env != "test" and len(self.jwt_secret) < 32:
-            raise ValueError("JWT_SECRET must be at least 32 characters outside test environments.")
+        if self.app_env in ("staging", "production") and len(self.jwt_secret) < 32:
+            raise ValueError(
+                "JWT_SECRET must be at least 32 characters in staging and production."
+            )
         return self
 
     @property
