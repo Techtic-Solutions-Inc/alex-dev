@@ -293,6 +293,7 @@ export class ContentLibraryItemResponseDto {
     description: 'Frontend compatibility field. Successful items always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 

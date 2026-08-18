@@ -121,6 +121,7 @@ export class DownloadHistoryItemDto {
     description: 'Frontend compatibility error field. Successful records always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 }
@@ -208,6 +209,7 @@ export class DownloadsResponseDataDto {
     description: 'Optional supporting link for the downloads screen.',
     example: null,
     nullable: true,
+    type: Object,
   })
   link!: null;
 
@@ -215,6 +217,7 @@ export class DownloadsResponseDataDto {
     description: 'Frontend compatibility error field. Successful responses always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 }
@@ -272,6 +275,7 @@ export class RedownloadResponseDataDto {
     description: 'Frontend compatibility error field. Successful responses always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 }
@@ -467,6 +471,7 @@ export class ContentGeneratedItemDto {
     description: 'Frontend compatibility field. Successful items always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 }
@@ -527,6 +532,7 @@ export class ContentGeneratedResponseDataDto {
     description: 'Optional supporting link for the Content Generated screen.',
     example: null,
     nullable: true,
+    type: Object,
   })
   link!: null;
 
@@ -534,6 +540,7 @@ export class ContentGeneratedResponseDataDto {
     description: 'Frontend compatibility field. Successful responses always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 }

@@ -198,6 +198,7 @@ export class ContentCalendarEntryResponseDto {
     description: 'Frontend compatibility field. Successful entries always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 

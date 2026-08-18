@@ -131,6 +131,7 @@ export class DashboardAnnouncementResponseDto {
     description: 'Frontend compatibility field. Successful records always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 
@@ -189,6 +190,7 @@ export class DashboardAnalyticsResponseDto {
     description: 'Optional supporting link for analytics resources.',
     example: null,
     nullable: true,
+    type: Object,
   })
   link!: null;
 
@@ -196,6 +198,7 @@ export class DashboardAnalyticsResponseDto {
     description: 'Frontend compatibility field. Successful analytics responses always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 
@@ -250,10 +253,11 @@ export class DashboardOverviewDataDto {
     description: 'Overview resource error field for frontend compatibility.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 
-  @ApiPropertyOptional({ description: 'Optional supporting dashboard link.', example: null, nullable: true })
+  @ApiPropertyOptional({ description: 'Optional supporting dashboard link.', example: null, nullable: true, type: Object })
   link!: null;
 
   @ApiProperty({
@@ -288,13 +292,14 @@ export class DashboardQuestionResponseDataDto {
   })
   description!: string;
 
-  @ApiPropertyOptional({ description: 'Optional related resource link.', example: null, nullable: true })
+  @ApiPropertyOptional({ description: 'Optional related resource link.', example: null, nullable: true, type: Object })
   link!: null;
 
   @ApiPropertyOptional({
     description: 'Frontend compatibility field. Successful responses always return null.',
     example: null,
     nullable: true,
+    type: Object,
   })
   error!: null;
 
