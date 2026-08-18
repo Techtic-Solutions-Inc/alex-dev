@@ -1,14 +1,20 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
 
-config({ path: resolve(__dirname, '../.env.test'), override: true });
+let mongoServer: MongoMemoryServer;
 
-jest.setTimeout(30_000);
+export const setupTestDB = async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
 
-process.env.JWT_SECRET ??= 'test-jwt-secret-at-least-32-characters-long';
-process.env.JWT_EXPIRY ??= '3600';
-process.env.JWT_REFRESH_EXPIRY ??= '86400';
-process.env.EMAIL_VERIFICATION_URL ??= 'http://localhost:3000/api/auth/verify-email';
-process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS ??= '24';
-process.env.RATE_LIMIT_POINTS = '100000';
-process.env.RATE_LIMIT_DURATION ??= '1';
+  await mongoose.connect(uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  });
+};
+
+export const teardownTestDB = async () => {
+  await mongoose.connection.dropDatabase();
+  await mongoose.connection.close();
+  await mongoServer.stop();
+};
