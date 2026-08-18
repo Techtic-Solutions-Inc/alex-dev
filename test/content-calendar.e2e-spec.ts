@@ -148,6 +148,44 @@ describe('Content Calendar (e2e)', () => {
     expect(response.text).toBe('');
   });
 
+  it('returns 404 when the account is inactive', async () => {
+    const email = uniqueEmail('calendar.inactive');
+    const password = 'StrongPassword123!';
+
+    await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send({
+        first_name: 'Jane',
+        last_name: 'Doe',
+        email,
+        password,
+        terms_accepted: true,
+      })
+      .expect(201);
+
+    const verificationToken = verificationTokens.get(email);
+    expect(verificationToken).toBeDefined();
+
+    await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+
+    const loginResponse = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({ email, password })
+      .expect(201);
+
+    const inactiveToken = loginResponse.body.data.accessToken as string;
+    const connection = app.get<Connection>(getConnectionToken());
+    await connection.collection('users').updateOne({ email }, { $set: { is_active: false } });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/content-calendar')
+      .set('Authorization', `Bearer ${inactiveToken}`);
+
+    expect(response.status).toBe(404);
+    expect(response.body.success).toBe(false);
+    expect(response.body.error.code).toBe('USER_NOT_FOUND');
+  });
+
   it('returns only active content entries when listing the calendar', async () => {
     const first = await request(app.getHttpServer())
       .post('/api/content-calendar')

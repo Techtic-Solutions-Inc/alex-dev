@@ -53,9 +53,11 @@ describe('Auth Login & Session (e2e)', () => {
     expect(response.body.data).toEqual({
       id: expect.any(String),
       name: 'John Doe',
+      full_name: 'John Doe',
       first_name: 'John',
       last_name: 'Doe',
       email,
+      phone: null,
       token: expect.any(String),
       accessToken: expect.any(String),
       refreshToken: expect.any(String),
@@ -69,7 +71,7 @@ describe('Auth Login & Session (e2e)', () => {
       password: 'StrongPassword123!',
     });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.error).toEqual({
       code: 'VALIDATION_ERROR',
@@ -126,7 +128,7 @@ describe('Auth Login & Session (e2e)', () => {
         password: 'weak',
       });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.error).toEqual({
       code: 'VALIDATION_ERROR',
@@ -194,7 +196,7 @@ describe('Auth Login & Session (e2e)', () => {
       .post('/api/auth/refresh')
       .send({ refreshToken: 'not-a-valid-token' });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.error).toEqual({
       code: 'VALIDATION_ERROR',

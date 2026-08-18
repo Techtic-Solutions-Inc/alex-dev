@@ -7,6 +7,7 @@ import {
   CreateContentCalendarEntryDto,
   UpdateContentCalendarEntryDto,
 } from './dto/content-calendar.dto';
+import { User, UserDocument } from '../auth/entities/user.schema';
 import { ContentCalendarEntry, ContentCalendarEntryDocument } from './entities/content-calendar-entry.schema';
 import { CalendarAnalyticsService } from './calendar-analytics.service';
 
@@ -15,10 +16,13 @@ export class CalendarService {
   constructor(
     @InjectModel(ContentCalendarEntry.name)
     private readonly contentCalendarEntryModel: Model<ContentCalendarEntry>,
+    @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly calendarAnalyticsService: CalendarAnalyticsService,
   ) {}
 
   async listActiveEntries(userId: string): Promise<ContentCalendarEntryResponseDto[]> {
+    await this.getUserOrThrow(userId);
+
     const entries = await this.contentCalendarEntryModel
       .find({ user_id: this.toObjectId(userId), is_active: true })
       .sort({ date: 1, createdAt: 1 })
@@ -30,6 +34,8 @@ export class CalendarService {
   }
 
   async createEntry(userId: string, dto: CreateContentCalendarEntryDto): Promise<ContentCalendarEntryResponseDto> {
+    await this.getUserOrThrow(userId);
+
     const normalizedTitle = dto.title.trim();
     const normalizedDate = this.normalizeToUtcMidnight(new Date(dto.date));
 
@@ -65,6 +71,8 @@ export class CalendarService {
     entryId: string,
     dto: UpdateContentCalendarEntryDto,
   ): Promise<ContentCalendarEntryResponseDto> {
+    await this.getUserOrThrow(userId);
+
     const entry = await this.findOwnedActiveEntry(userId, entryId);
     const nextTitle = dto.title?.trim() ?? entry.title;
     const nextDate = dto.date ? this.normalizeToUtcMidnight(new Date(dto.date)) : entry.date;
@@ -106,6 +114,8 @@ export class CalendarService {
   }
 
   async deleteEntry(userId: string, entryId: string): Promise<void> {
+    await this.getUserOrThrow(userId);
+
     const entry = await this.findOwnedActiveEntry(userId, entryId);
     entry.is_active = false;
     await entry.save();
@@ -146,6 +156,16 @@ export class CalendarService {
     }
 
     return entry;
+  }
+
+  private async getUserOrThrow(userId: string): Promise<UserDocument> {
+    const user = await this.userModel.findById(this.toObjectId(userId)).exec();
+
+    if (!user || user.is_active === false) {
+      throw new HttpException('User not found', HttpStatus.NOT_FOUND, 'USER_NOT_FOUND');
+    }
+
+    return user;
   }
 
   private duplicateEntryException(): HttpException {
