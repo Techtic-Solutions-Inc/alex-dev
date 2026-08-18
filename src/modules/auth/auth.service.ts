@@ -1,86 +1,57 @@
+// Restored AuthService implementation from commit 042a063
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { User, UserDocument } from './entities/user.schema';
+import { JwtService } from '@nestjs/jwt';
+import { UserService } from '../user/user.service';
 import { RegisterDto } from './dto/register.dto';
+import { LoginDto } from './dto/login.dto';
 import { TokenPair } from './interfaces/token-pair.interface';
-import { RegisteredUser, LoginResult, SessionBootstrap } from './interfaces/auth.interfaces';
+import { User } from '../user/user.entity';
+import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class AuthService {
-  constructor(@InjectModel(User.name) private userModel: Model<UserDocument>) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly jwtService: JwtService,
+  ) {}
 
-  async register(dto: RegisterDto): Promise<RegisteredUser> {
-    const passwordHash = await this.hashPassword(dto.password);
-    const user = new this.userModel({
-      first_name: dto.first_name,
-      last_name: dto.last_name,
-      email: dto.email,
-      phone: dto.phone?.trim() ?? null,
-      password_hash: passwordHash,
-      terms_accepted: dto.terms_accepted,
-      verification_token_hash: verificationTokenHash,
-    });
-    await user.save();
-    return {
-      id: user._id.toString(),
-      name: `${user.first_name} ${user.last_name}`,
-      full_name: `${user.first_name} ${user.last_name}`,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      phone: user.phone,
-      email_verified: user.email_verified,
-    };
+  async signup(registerDto: RegisterDto): Promise<User> {
+    const hashedPassword = await this.hashPassword(registerDto.password);
+    return this.userService.create({ ...registerDto, password: hashedPassword });
   }
 
-  async login(email: string, password: string): Promise<LoginResult> {
-    const user = await this.userModel.findOne({ email }).exec();
-    if (!user || !(await this.comparePassword(password, user.password_hash))) {
+  async login(loginDto: LoginDto): Promise<TokenPair> {
+    const user = await this.userService.findByEmail(loginDto.email);
+    if (!user || !(await this.verifyPassword(loginDto.password, user.password))) {
       throw new Error('Invalid credentials');
     }
-    const tokenPair = await this.generateTokenPair(user);
-    return {
-      id: user._id.toString(),
-      name: `${user.first_name} ${user.last_name}`,
-      full_name: `${user.first_name} ${user.last_name}`,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      phone: user.phone,
-      token: tokenPair.accessToken,
-      accessToken: tokenPair.accessToken,
-      refreshToken: tokenPair.refreshToken,
-    };
+    return this.generateTokenPair(user);
   }
 
   async verifyEmail(token: string): Promise<void> {
     // Implementation for email verification
   }
 
-  async getSessionBootstrap(): Promise<SessionBootstrap> {
-    return {
-      status: 'UP',
-      id: null,
-      name: null,
-      full_name: null,
-      first_name: null,
-      last_name: null,
-      email: null,
-      phone: null,
-      token: null,
-    };
+  async refresh(token: string): Promise<TokenPair> {
+    // Implementation for token refresh
   }
 
-  private async hashPassword(password: string): Promise<string> {
-    // Implementation for hashing password
+  async verifyPassword(plainText: string, hashed: string): Promise<boolean> {
+    return bcrypt.compare(plainText, hashed);
   }
 
-  private async comparePassword(password: string, hash: string): Promise<boolean> {
-    // Implementation for comparing password
+  async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, 10);
   }
 
-  private async generateTokenPair(user: UserDocument): Promise<TokenPair> {
-    // Implementation for generating token pair
+  async generateTokenPair(user: User): Promise<TokenPair> {
+    const payload = { email: user.email, sub: user.id };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    return { accessToken, refreshToken };
+  }
+
+  async resolveSession(authorization: string): Promise<User> {
+    // Implementation for resolving session
   }
 }
