@@ -36,11 +36,7 @@ export class RolesGuard implements CanActivate {
     }
 
     if (!requiredRoles.includes((user.role ?? 'agent') as UserRole)) {
-      throw new HttpException(
-        'You do not have permission to access the content library',
-        403,
-        'CONTENT_LIBRARY_ACCESS_FORBIDDEN',
-      );
+      throw new HttpException('You do not have permission to access this resource', 403, 'ACCESS_FORBIDDEN');
     }
 
     return true;
