@@ -5,7 +5,11 @@ import { databaseProviders } from './config/database.config';
 import { LoggingMiddleware } from './middleware/logging.middleware';
 import { RateLimiterMiddleware } from './middleware/rate-limiter.middleware';
 import { AuthModule } from './modules/auth/auth.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
+import { ContentLibraryModule } from './modules/content-library/content-library.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
+import { ProfileModule } from './modules/profile/profile.module';
 
 @Module({
   imports: [
@@ -25,7 +29,11 @@ import { HealthModule } from './modules/health/health.module';
     }),
     ...databaseProviders,
     AuthModule,
+    CalendarModule,
+    ContentLibraryModule,
+    DashboardModule,
     HealthModule,
+    ProfileModule,
   ],
 })
 export class AppModule implements NestModule {

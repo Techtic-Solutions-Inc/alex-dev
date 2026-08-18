@@ -22,18 +22,22 @@ export interface TokenPair {
 export interface RegisteredUser {
   id: string;
   name: string;
+  full_name: string;
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   email_verified: boolean;
 }
 
 export interface LoginResult {
   id: string;
   name: string;
+  full_name: string;
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   token: string;
   accessToken: string;
   refreshToken?: string;
@@ -44,9 +48,11 @@ export interface SessionBootstrap {
   status: 'UP';
   id: string | null;
   name: string | null;
+  full_name: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  phone: string | null;
   token: string | null;
 }
 
@@ -73,6 +79,7 @@ export class AuthService {
         first_name: dto.first_name,
         last_name: dto.last_name,
         email: dto.email,
+        phone: dto.phone?.trim() ?? null,
         password_hash: passwordHash,
         terms_accepted: dto.terms_accepted,
         verification_token_hash: verificationTokenHash,
@@ -122,7 +129,7 @@ export class AuthService {
           $set: { email_verified: true },
           $unset: { verification_token_hash: 1, verification_token_expires_at: 1 },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 
@@ -184,9 +191,11 @@ export class AuthService {
       status: 'UP',
       id: null,
       name: null,
+      full_name: null,
       first_name: null,
       last_name: null,
       email: null,
+      phone: null,
       token: null,
     };
 
@@ -218,9 +227,11 @@ export class AuthService {
       status: 'UP',
       id: profile.id,
       name: profile.name,
+      full_name: profile.full_name,
       first_name: profile.first_name,
       last_name: profile.last_name,
       email: profile.email,
+      phone: profile.phone,
       token,
     };
   }
@@ -265,13 +276,13 @@ export class AuthService {
     return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : fallback;
   }
 
-  private async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     const salt = randomBytes(16);
     const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
     return `scrypt$${salt.toString('hex')}$${derivedKey.toString('hex')}`;
   }
 
-  private async verifyPassword(password: string, storedHash: string | undefined): Promise<boolean> {
+  async verifyPassword(password: string, storedHash: string | undefined): Promise<boolean> {
     if (typeof storedHash !== 'string') {
       return false;
     }
@@ -305,9 +316,11 @@ export class AuthService {
     return {
       id: user._id.toString(),
       name: `${user.first_name} ${user.last_name}`,
+      full_name: `${user.first_name} ${user.last_name}`,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
+      phone: user.phone ?? null,
       email_verified: user.email_verified,
     };
   }
@@ -316,9 +329,11 @@ export class AuthService {
     return {
       id: user._id.toString(),
       name: `${user.first_name} ${user.last_name}`,
+      full_name: `${user.first_name} ${user.last_name}`,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
+      phone: user.phone ?? null,
     };
   }
 

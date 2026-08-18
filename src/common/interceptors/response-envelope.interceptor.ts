@@ -1,4 +1,5 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, HttpStatus, Injectable, NestInterceptor } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { Observable, map } from 'rxjs';
 
 interface EnvelopeBody {
@@ -8,7 +9,15 @@ interface EnvelopeBody {
 
 @Injectable()
 export class ResponseEnvelopeInterceptor implements NestInterceptor {
-  intercept(_context: ExecutionContext, next: CallHandler): Observable<unknown> {
+  constructor(private readonly reflector: Reflector) {}
+
+  intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
+    const statusCode = this.reflector.get<number | undefined>('httpCode', context.getHandler());
+
+    if (statusCode === HttpStatus.NO_CONTENT) {
+      return next.handle();
+    }
+
     return next.handle().pipe(
       map((body: unknown) => {
         const response = this.isEnvelopeBody(body) ? body : { data: body };
