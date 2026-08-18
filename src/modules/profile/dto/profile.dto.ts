@@ -387,6 +387,16 @@ export class ProfileResponseDataDto {
   image!: string | null;
 
   @ApiPropertyOptional({
+    description: 'Write-only password placeholder for frontend form binding. Always null in responses.',
+    example: null,
+    nullable: true,
+    type: String,
+    format: 'password',
+    writeOnly: true,
+  })
+  password!: string | null;
+
+  @ApiPropertyOptional({
     description: 'Optional external profile or website link.',
     example: 'https://agentwise.example.com/joseph-stanley',
     nullable: true,

@@ -381,6 +381,7 @@ export class ProfileService {
       profile,
       address_details: addressDetails,
       image: user.image ?? null,
+      password: null,
       link: user.link ?? null,
       error: null,
     };

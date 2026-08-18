@@ -22,10 +22,20 @@ describe('Health endpoint (e2e)', () => {
       status: 'UP',
       id: null,
       name: null,
+      full_name: null,
       first_name: null,
       last_name: null,
       email: null,
+      phone: null,
       token: null,
+      bio: null,
+      city: null,
+      country: null,
+      zip: null,
+      address: null,
+      image: null,
+      password: null,
+      profile: null,
     });
   });
 });

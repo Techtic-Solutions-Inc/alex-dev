@@ -107,6 +107,7 @@ describe('Profile API (e2e)', () => {
         country: 'USA',
       },
       image: null,
+      password: null,
       link: null,
       error: null,
     });
