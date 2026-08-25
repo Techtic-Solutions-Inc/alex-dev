@@ -22,32 +22,53 @@ export interface TokenPair {
 export interface RegisteredUser {
   id: string;
   name: string;
+  full_name: string;
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   email_verified: boolean;
 }
 
 export interface LoginResult {
   id: string;
   name: string;
+  full_name: string;
   first_name: string;
   last_name: string;
   email: string;
+  phone: string | null;
   token: string;
   accessToken: string;
   refreshToken?: string;
   tokenType: 'Bearer';
 }
 
+export interface SessionProfileSummary {
+  bio: string | null;
+  description: string | null;
+  image: string | null;
+  name: string;
+}
+
 export interface SessionBootstrap {
   status: 'UP';
   id: string | null;
   name: string | null;
+  full_name: string | null;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
+  phone: string | null;
   token: string | null;
+  bio: string | null;
+  city: string | null;
+  country: string | null;
+  zip: string | null;
+  address: string | null;
+  image: string | null;
+  password: string | null;
+  profile: SessionProfileSummary | null;
 }
 
 const scrypt = promisify(scryptCallback);
@@ -73,6 +94,7 @@ export class AuthService {
         first_name: dto.first_name,
         last_name: dto.last_name,
         email: dto.email,
+        phone: dto.phone?.trim() ?? null,
         password_hash: passwordHash,
         terms_accepted: dto.terms_accepted,
         verification_token_hash: verificationTokenHash,
@@ -122,7 +144,7 @@ export class AuthService {
           $set: { email_verified: true },
           $unset: { verification_token_hash: 1, verification_token_expires_at: 1 },
         },
-        { new: true },
+        { returnDocument: 'after' },
       )
       .exec();
 
@@ -180,15 +202,7 @@ export class AuthService {
   }
 
   async resolveSession(authorization?: string): Promise<SessionBootstrap> {
-    const emptySession: SessionBootstrap = {
-      status: 'UP',
-      id: null,
-      name: null,
-      first_name: null,
-      last_name: null,
-      email: null,
-      token: null,
-    };
+    const emptySession = this.createEmptySession();
 
     const token = this.extractOptionalBearerToken(authorization);
     if (!token) {
@@ -213,16 +227,7 @@ export class AuthService {
       return emptySession;
     }
 
-    const profile = this.toRegisteredUser(user);
-    return {
-      status: 'UP',
-      id: profile.id,
-      name: profile.name,
-      first_name: profile.first_name,
-      last_name: profile.last_name,
-      email: profile.email,
-      token,
-    };
+    return this.toSessionBootstrap(user, token);
   }
 
   refresh(refreshToken: string): TokenPair {
@@ -265,13 +270,13 @@ export class AuthService {
     return Number.isSafeInteger(seconds) && seconds > 0 ? seconds : fallback;
   }
 
-  private async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     const salt = randomBytes(16);
     const derivedKey = (await scrypt(password, salt, 64)) as Buffer;
     return `scrypt$${salt.toString('hex')}$${derivedKey.toString('hex')}`;
   }
 
-  private async verifyPassword(password: string, storedHash: string | undefined): Promise<boolean> {
+  async verifyPassword(password: string, storedHash: string | undefined): Promise<boolean> {
     if (typeof storedHash !== 'string') {
       return false;
     }
@@ -301,13 +306,93 @@ export class AuthService {
     return Number.isSafeInteger(hours) && hours > 0 ? hours * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
   }
 
+  private createEmptySession(): SessionBootstrap {
+    return {
+      status: 'UP',
+      id: null,
+      name: null,
+      full_name: null,
+      first_name: null,
+      last_name: null,
+      email: null,
+      phone: null,
+      token: null,
+      bio: null,
+      city: null,
+      country: null,
+      zip: null,
+      address: null,
+      image: null,
+      password: null,
+      profile: null,
+    };
+  }
+
+  private toSessionBootstrap(user: UserDocument, token: string | null): SessionBootstrap {
+    const fullName = `${user.first_name} ${user.last_name}`.trim();
+    const bio = user.bio ?? null;
+    const description = user.description ?? bio;
+    const addressDetails = {
+      street: user.street ?? null,
+      city: user.city ?? null,
+      state: user.state ?? null,
+      zip: user.zip ?? null,
+      country: user.country ?? null,
+    };
+
+    return {
+      status: 'UP',
+      id: user._id.toString(),
+      name: fullName,
+      full_name: fullName,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone ?? user.mobile_number ?? null,
+      token,
+      bio,
+      city: addressDetails.city,
+      country: addressDetails.country,
+      zip: addressDetails.zip,
+      address: this.formatAddress(addressDetails),
+      image: user.image ?? null,
+      password: null,
+      profile: {
+        bio,
+        description,
+        image: user.image ?? null,
+        name: fullName,
+      },
+    };
+  }
+
+  private formatAddress(address: {
+    street: string | null;
+    city: string | null;
+    state: string | null;
+    zip: string | null;
+    country: string | null;
+  }): string | null {
+    const lineOne = address.street?.trim();
+    const locality = [address.city, address.state, address.zip].filter(
+      (part) => typeof part === 'string' && part.trim().length > 0,
+    );
+    const parts = [lineOne, locality.length > 0 ? locality.join(', ').replace(', ,', ',') : null, address.country]
+      .filter((part) => typeof part === 'string' && part.trim().length > 0)
+      .map((part) => part!.trim());
+
+    return parts.length > 0 ? parts.join(', ') : null;
+  }
+
   private toRegisteredUser(user: UserDocument): RegisteredUser {
     return {
       id: user._id.toString(),
       name: `${user.first_name} ${user.last_name}`,
+      full_name: `${user.first_name} ${user.last_name}`,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
+      phone: user.phone ?? null,
       email_verified: user.email_verified,
     };
   }
@@ -316,9 +401,11 @@ export class AuthService {
     return {
       id: user._id.toString(),
       name: `${user.first_name} ${user.last_name}`,
+      full_name: `${user.first_name} ${user.last_name}`,
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
+      phone: user.phone ?? null,
     };
   }
 

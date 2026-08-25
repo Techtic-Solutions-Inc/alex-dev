@@ -1,7 +1,8 @@
-import { HttpStatus, UnprocessableEntityException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, HttpStatus, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { Reflector } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
@@ -34,16 +35,16 @@ async function bootstrap(): Promise<void> {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      errorHttpStatusCode: HttpStatus.BAD_REQUEST,
       exceptionFactory: (errors) =>
-        new UnprocessableEntityException({
+        new BadRequestException({
           message: 'Validation failed',
           errors: validationDetails(errors),
         }),
     }),
   );
   app.useGlobalFilters(new GlobalExceptionFilter());
-  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
+  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Backend API')

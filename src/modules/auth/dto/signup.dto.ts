@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { Equals, IsBoolean, IsEmail, IsNotEmpty, IsString, Length, Matches } from 'class-validator';
+import { Equals, IsBoolean, IsEmail, IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
 
 export class SignupDto {
   @ApiProperty({
@@ -36,6 +36,16 @@ export class SignupDto {
   @IsEmail({}, { message: 'email must be a valid email address' })
   @Length(1, 254, { message: 'email must be at most 254 characters' })
   email!: string;
+
+  @ApiProperty({
+    description: 'Optional phone number used by dashboard and profile experiences.',
+    example: '+1-555-0100',
+    required: false,
+  })
+  @Transform(({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
+  @Matches(/^\+?[0-9][0-9\s\-().]{6,24}$/, { message: 'phone must be a valid phone number' })
+  phone?: string;
 
   @ApiProperty({
     description:

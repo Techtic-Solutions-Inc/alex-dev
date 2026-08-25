@@ -1,4 +1,5 @@
-import { HttpStatus, INestApplication, UnprocessableEntityException, ValidationPipe } from '@nestjs/common';
+import { BadRequestException, HttpStatus, INestApplication, ValidationPipe } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
@@ -43,16 +44,16 @@ export async function createTestApp(): Promise<INestApplication> {
       whitelist: true,
       forbidNonWhitelisted: true,
       transform: true,
-      errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+      errorHttpStatusCode: HttpStatus.BAD_REQUEST,
       exceptionFactory: (errors) =>
-        new UnprocessableEntityException({
+        new BadRequestException({
           message: 'Validation failed',
           errors: validationDetails(errors),
         }),
     }),
   );
   app.useGlobalFilters(new GlobalExceptionFilter());
-  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor());
+  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
   await app.init();
   return app;
 }

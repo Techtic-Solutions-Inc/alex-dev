@@ -36,9 +36,11 @@ describe('Auth Signup (e2e)', () => {
       data: {
         id: expect.any(String),
         name: 'John Doe',
+        full_name: 'John Doe',
         first_name: 'John',
         last_name: 'Doe',
         email,
+        phone: null,
         email_verified: false,
       },
     });
@@ -53,7 +55,7 @@ describe('Auth Signup (e2e)', () => {
         password: 'StrongPassword123!',
       });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.message).toBe('Validation failed');
     expect(response.body.error).toEqual({
@@ -107,7 +109,7 @@ describe('Auth Signup (e2e)', () => {
         terms_accepted: true,
       });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.error).toEqual({
       code: 'VALIDATION_ERROR',
@@ -130,7 +132,7 @@ describe('Auth Signup (e2e)', () => {
         terms_accepted: false,
       });
 
-    expect(response.status).toBe(422);
+    expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
     expect(response.body.error).toEqual({
       code: 'VALIDATION_ERROR',

@@ -7,6 +7,9 @@ export class RegisteredUserResponseDto {
   @ApiProperty({ description: 'Display name assembled from first and last name.', example: 'John Doe' })
   name!: string;
 
+  @ApiProperty({ description: 'Frontend-friendly full name field.', example: 'John Doe' })
+  full_name!: string;
+
   @ApiProperty({ description: 'User given name.', example: 'John' })
   first_name!: string;
 
@@ -15,6 +18,13 @@ export class RegisteredUserResponseDto {
 
   @ApiProperty({ description: 'Verified email address.', example: 'john.doe@example.com' })
   email!: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional phone number stored for the user.',
+    example: '+1-555-0100',
+    nullable: true,
+  })
+  phone!: string | null;
 
   @ApiProperty({ description: 'Whether the email verification link has been consumed.', example: false })
   email_verified!: boolean;
@@ -57,6 +67,9 @@ export class LoginUserResponseDto {
   @ApiProperty({ description: 'Display name assembled from first and last name.', example: 'John Doe' })
   name!: string;
 
+  @ApiProperty({ description: 'Frontend-friendly full name field.', example: 'John Doe' })
+  full_name!: string;
+
   @ApiProperty({ description: 'User given name.', example: 'John' })
   first_name!: string;
 
@@ -65,6 +78,13 @@ export class LoginUserResponseDto {
 
   @ApiProperty({ description: 'Email address used to sign in.', example: 'john.doe@example.com' })
   email!: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional phone number stored for the user.',
+    example: '+1-555-0100',
+    nullable: true,
+  })
+  phone!: string | null;
 }
 
 export class LoginResponseDataDto extends LoginUserResponseDto {

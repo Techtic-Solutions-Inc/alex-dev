@@ -13,5 +13,8 @@ export function applyEnvDefaults(environment: Record<string, string | undefined>
     env.RATE_LIMIT_DURATION ??= '1';
   }
 
+  env.GOOGLE_ANALYTICS_MEASUREMENT_ID ??= env.GA_MEASUREMENT_ID;
+  env.GOOGLE_ANALYTICS_API_SECRET ??= env.GA_API_SECRET;
+
   return env;
 }
