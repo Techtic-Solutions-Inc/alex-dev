@@ -23,12 +23,15 @@ const validationDetails = (errors: ValidationError[]): Record<string, string[]> 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-  const origins = configService.get<string>('CORS_ORIGIN', '*');
+  const corsOrigin = configService.get<string>('CORS_ORIGIN')?.trim();
+  const allowAllOrigins = !corsOrigin || corsOrigin === '*';
 
   app.setGlobalPrefix('api', { exclude: ['health'] });
   app.enableCors({
-    origin: origins === '*' ? '*' : origins.split(',').map((origin) => origin.trim()),
-    credentials: origins !== '*',
+    origin: allowAllOrigins
+      ? true
+      : corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+    credentials: true,
   });
   app.useGlobalPipes(
     new ValidationPipe({
