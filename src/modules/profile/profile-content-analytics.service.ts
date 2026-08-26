@@ -2,10 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 type ProfileContentAnalyticsEvent =
-  | 'profile_content_viewed'
-  | 'profile_content_created'
-  | 'profile_content_updated'
-  | 'profile_content_deleted';
+  'profile_content_viewed' | 'profile_content_created' | 'profile_content_updated' | 'profile_content_deleted';
 
 @Injectable()
 export class ProfileContentAnalyticsService {

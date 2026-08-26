@@ -1,3 +1,4 @@
+import '../../crypto-polyfill';
 import mongoose from 'mongoose';
 import { initialSchemaMigration } from './001-initial-schema.migration';
 import { visitorHomeSchemaMigration } from './002-visitor-home-schema.migration';

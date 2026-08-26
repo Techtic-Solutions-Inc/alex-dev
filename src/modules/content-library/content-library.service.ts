@@ -131,12 +131,7 @@ export class ContentLibraryService {
     const filter = this.buildFilter(userId, query);
 
     const [items, total] = await Promise.all([
-      this.contentLibraryItemModel
-        .find(filter)
-        .sort({ updatedAt: -1, createdAt: -1 })
-        .skip(skip)
-        .limit(limit)
-        .exec(),
+      this.contentLibraryItemModel.find(filter).sort({ updatedAt: -1, createdAt: -1 }).skip(skip).limit(limit).exec(),
       this.contentLibraryItemModel.countDocuments(filter).exec(),
     ]);
 
@@ -165,7 +160,12 @@ export class ContentLibraryService {
 
     if (query.q) {
       const searchRegex = new RegExp(this.escapeRegex(query.q.trim()), 'i');
-      filter.$or = [{ title: searchRegex }, { description: searchRegex }, { category: searchRegex }, { tags: searchRegex }];
+      filter.$or = [
+        { title: searchRegex },
+        { description: searchRegex },
+        { category: searchRegex },
+        { tags: searchRegex },
+      ];
     }
 
     return filter;
@@ -221,7 +221,11 @@ export class ContentLibraryService {
   private toObjectId(value: string, invalidCode = 'VALIDATION_ERROR'): Types.ObjectId {
     if (!Types.ObjectId.isValid(value)) {
       if (invalidCode === 'CONTENT_LIBRARY_ITEM_NOT_FOUND') {
-        throw new HttpException('Content library item not found', HttpStatus.NOT_FOUND, 'CONTENT_LIBRARY_ITEM_NOT_FOUND');
+        throw new HttpException(
+          'Content library item not found',
+          HttpStatus.NOT_FOUND,
+          'CONTENT_LIBRARY_ITEM_NOT_FOUND',
+        );
       }
 
       throw new HttpException('Validation failed', HttpStatus.UNPROCESSABLE_ENTITY, invalidCode, {

@@ -68,9 +68,7 @@ describe('Profile API (e2e)', () => {
 
     expect(updateResponse.status).toBe(200);
 
-    const response = await request(app.getHttpServer())
-      .get('/api/profile')
-      .set('Authorization', `Bearer ${token}`);
+    const response = await request(app.getHttpServer()).get('/api/profile').set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);

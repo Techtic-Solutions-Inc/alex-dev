@@ -1,3 +1,4 @@
+import './crypto-polyfill';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { applyEnvDefaults } from './config/env.defaults';

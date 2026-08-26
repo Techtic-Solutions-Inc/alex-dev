@@ -455,7 +455,10 @@ export class ContentGeneratedItemDto {
   })
   updated_at!: string;
 
-  @ApiProperty({ description: 'Full name from the Profile Content Generated form field #Name.40.', example: 'Jane Doe' })
+  @ApiProperty({
+    description: 'Full name from the Profile Content Generated form field #Name.40.',
+    example: 'Jane Doe',
+  })
   full_name!: string;
 
   @ApiProperty({

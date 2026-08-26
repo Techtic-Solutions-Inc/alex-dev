@@ -257,7 +257,12 @@ export class DashboardOverviewDataDto {
   })
   error!: null;
 
-  @ApiPropertyOptional({ description: 'Optional supporting dashboard link.', example: null, nullable: true, type: Object })
+  @ApiPropertyOptional({
+    description: 'Optional supporting dashboard link.',
+    example: null,
+    nullable: true,
+    type: Object,
+  })
   link!: null;
 
   @ApiProperty({
