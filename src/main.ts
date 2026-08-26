@@ -1,3 +1,4 @@
+import './crypto-polyfill';
 import { BadRequestException, HttpStatus, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -30,7 +31,10 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: allowAllOrigins
       ? true
-      : corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+      : corsOrigin
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean),
     credentials: true,
   });
   app.useGlobalPipes(

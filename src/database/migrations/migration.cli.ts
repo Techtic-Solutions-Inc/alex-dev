@@ -1,5 +1,7 @@
+import '../../crypto-polyfill';
 import mongoose from 'mongoose';
 import { initialSchemaMigration } from './001-initial-schema.migration';
+import { visitorHomeSchemaMigration } from './002-visitor-home-schema.migration';
 import { MigrationError, MigrationRunner } from './migration-runner';
 
 type MigrationCommand = 'up' | 'down' | 'status';
@@ -42,7 +44,7 @@ async function main(): Promise<void> {
       throw new Error('Unable to establish a database connection for migrations.');
     }
 
-    const runner = new MigrationRunner(connection.db, [initialSchemaMigration], {
+    const runner = new MigrationRunner(connection.db, [initialSchemaMigration, visitorHomeSchemaMigration], {
       owner: process.env.MIGRATION_RUNNER_ID,
     });
 

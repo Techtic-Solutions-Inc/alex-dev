@@ -32,4 +32,7 @@ export class ProfileContent {
 
 export const ProfileContentSchema = SchemaFactory.createForClass(ProfileContent);
 
-ProfileContentSchema.index({ user_id: 1, is_active: 1, updatedAt: -1 }, { name: 'idx_profile_contents_user_active_updated' });
+ProfileContentSchema.index(
+  { user_id: 1, is_active: 1, updatedAt: -1 },
+  { name: 'idx_profile_contents_user_active_updated' },
+);

@@ -1,5 +1,6 @@
 import { mongo } from 'mongoose';
 import { initialSchemaMigration } from './001-initial-schema.migration';
+import { visitorHomeSchemaMigration } from './002-visitor-home-schema.migration';
 import { Migration } from './migration.interface';
 import { MigrationError, MigrationRunner } from './migration-runner';
 
@@ -176,6 +177,26 @@ describe('MigrationRunner', () => {
     expect(database.collection('users').indexes).not.toContain('uniq_users_email');
     expect(database.collection('users').indexes).not.toContain('verification_token_hash_1');
     expect(database.collection('app_settings').documents.get('schema_version')).toBeUndefined();
+  });
+
+  it('creates and rolls back the visitor home schema artifacts idempotently', async () => {
+    const database = new FakeDatabase();
+    const runner = new MigrationRunner(asDatabase(database), [visitorHomeSchemaMigration]);
+
+    await runner.up();
+    expect(database.collection('visitor_home_subscriptions').indexes).toContain(
+      'uniq_visitor_home_subscriptions_email',
+    );
+
+    await runner.up();
+    expect(database.collection('visitor_home_subscriptions').indexes).toContain(
+      'uniq_visitor_home_subscriptions_email',
+    );
+
+    await runner.down();
+    expect(database.collection('visitor_home_subscriptions').indexes).not.toContain(
+      'uniq_visitor_home_subscriptions_email',
+    );
   });
 
   it('rejects a changed migration checksum', async () => {

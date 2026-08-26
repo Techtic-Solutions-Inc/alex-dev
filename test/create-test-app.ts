@@ -67,3 +67,9 @@ export async function clearUsers(app: INestApplication): Promise<void> {
 export function uniqueEmail(prefix: string): string {
   return `${prefix}.${Date.now()}.${Math.random().toString(36).slice(2, 8)}@example.com`;
 }
+
+export async function clearVisitorHome(app: INestApplication): Promise<void> {
+  const connection = app.get<Connection>(getConnectionToken());
+  await connection.collection('visitor_home_contents').deleteMany({});
+  await connection.collection('visitor_home_subscriptions').deleteMany({});
+}
