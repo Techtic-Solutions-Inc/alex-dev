@@ -5,7 +5,7 @@ export type VisitorHomeSubscriptionDocument = HydratedDocument<VisitorHomeSubscr
 
 @Schema({ collection: 'visitor_home_subscriptions', timestamps: true, versionKey: false })
 export class VisitorHomeSubscription {
-  @Prop({ required: true, trim: true, maxlength: 160, default: '' })
+  @Prop({ trim: true, maxlength: 160, default: '' })
   full_name!: string;
 
   @Prop({ type: String, trim: true, maxlength: 100, default: null })
