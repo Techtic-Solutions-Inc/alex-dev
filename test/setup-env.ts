@@ -1,5 +1,12 @@
+import { webcrypto } from 'crypto';
 import { config } from 'dotenv';
 import { resolve } from 'path';
+
+if (!globalThis.crypto) {
+  Object.defineProperty(globalThis, 'crypto', { value: webcrypto });
+}
+
+config({ path: resolve(__dirname, '../.env.test'), override: true });
 
 config({ path: resolve(__dirname, '../.env.test'), override: true });
 
