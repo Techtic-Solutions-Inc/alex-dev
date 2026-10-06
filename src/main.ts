@@ -30,7 +30,10 @@ async function bootstrap(): Promise<void> {
   app.enableCors({
     origin: allowAllOrigins
       ? true
-      : corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+      : corsOrigin
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean),
     credentials: true,
   });
   app.useGlobalPipes(

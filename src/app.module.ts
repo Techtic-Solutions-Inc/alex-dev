@@ -10,6 +10,7 @@ import { ContentLibraryModule } from './modules/content-library/content-library.
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { UltimateMindModule } from './modules/ultimate-mind/ultimate-mind.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     DashboardModule,
     HealthModule,
     ProfileModule,
+    UltimateMindModule,
   ],
 })
 export class AppModule implements NestModule {

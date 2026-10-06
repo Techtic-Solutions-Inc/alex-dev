@@ -11,6 +11,11 @@ export function applyEnvDefaults(environment: Record<string, string | undefined>
     env.EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS ??= '24';
     env.RATE_LIMIT_POINTS ??= '1000';
     env.RATE_LIMIT_DURATION ??= '1';
+
+    const rateLimitPoints = Number(env.RATE_LIMIT_POINTS);
+    if (!Number.isInteger(rateLimitPoints) || rateLimitPoints < 100) {
+      env.RATE_LIMIT_POINTS = '100000';
+    }
   }
 
   env.GOOGLE_ANALYTICS_MEASUREMENT_ID ??= env.GA_MEASUREMENT_ID;

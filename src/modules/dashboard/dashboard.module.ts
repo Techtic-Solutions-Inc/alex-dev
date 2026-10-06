@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { AuthModule } from '../auth/auth.module';
 import { CalendarModule } from '../calendar/calendar.module';
+import { UltimateMindModule } from '../ultimate-mind/ultimate-mind.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
@@ -13,6 +14,7 @@ import { DashboardAnalyticsService } from './dashboard-analytics.service';
   imports: [
     AuthModule,
     CalendarModule,
+    UltimateMindModule,
     MongooseModule.forFeature([
       { name: DashboardAnnouncement.name, schema: DashboardAnnouncementSchema },
       { name: User.name, schema: UserSchema },
