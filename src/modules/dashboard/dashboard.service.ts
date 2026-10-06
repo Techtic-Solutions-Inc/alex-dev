@@ -14,6 +14,7 @@ import {
 } from './dto/dashboard.dto';
 import { DashboardAnnouncement, DashboardAnnouncementDocument } from './entities/dashboard-announcement.schema';
 import { DashboardAnalyticsService } from './dashboard-analytics.service';
+import { UltimateMindService } from '../ultimate-mind/ultimate-mind.service';
 
 @Injectable()
 export class DashboardService {
@@ -24,6 +25,7 @@ export class DashboardService {
     private readonly userModel: Model<User>,
     private readonly calendarService: CalendarService,
     private readonly dashboardAnalyticsService: DashboardAnalyticsService,
+    private readonly ultimateMindService: UltimateMindService,
   ) {}
 
   async getOverview(userId: string): Promise<DashboardOverviewDataDto> {
@@ -164,6 +166,7 @@ export class DashboardService {
 
     user.ai_credits_used += 1;
     await user.save();
+    void this.ultimateMindService.syncUsageFromUser(userId);
 
     void this.dashboardAnalyticsService.trackEvent(userId, 'dashboard_question_asked', {
       credits_used: 1,

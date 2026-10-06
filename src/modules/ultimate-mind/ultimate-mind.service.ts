@@ -85,6 +85,7 @@ export class UltimateMindService {
     }
 
     await this.syncUserCredits(linkedUser._id.toString(), record.usage, record.limit);
+    const refreshedUser = await this.getLinkedUserOrThrow(dto.user_id);
 
     logger.info('Ultimate Mind AI credit record created', {
       recordId: record._id.toString(),
@@ -92,7 +93,7 @@ export class UltimateMindService {
       adminUserId,
     });
 
-    return this.toRecordData(record, linkedUser);
+    return this.toRecordData(record, refreshedUser);
   }
 
   /**
@@ -108,18 +109,15 @@ export class UltimateMindService {
     const record = await this.findActiveRecordOrThrow(recordId);
     const linkedUser = await this.getLinkedUserOrThrow(record.user_id.toString());
 
-    if (dto.usage !== undefined) {
-      record.usage = dto.usage;
-    }
-    if (dto.limit !== undefined) {
-      record.limit = dto.limit;
-    }
     if (dto.full_name !== undefined) {
       record.full_name = dto.full_name.trim();
     }
     if (dto.phone !== undefined) {
       record.phone = dto.phone.trim();
     }
+
+    record.usage = dto.usage ?? linkedUser.ai_credits_used;
+    record.limit = dto.limit ?? linkedUser.ai_credits_total;
 
     if (record.usage > record.limit) {
       throw new HttpException('Usage cannot exceed the credit limit', HttpStatus.UNPROCESSABLE_ENTITY, 'VALIDATION_ERROR', {
@@ -129,7 +127,12 @@ export class UltimateMindService {
     }
 
     await record.save();
-    await this.syncUserCredits(linkedUser._id.toString(), record.usage, record.limit);
+
+    if (dto.usage !== undefined || dto.limit !== undefined) {
+      await this.syncUserCredits(linkedUser._id.toString(), record.usage, record.limit);
+    }
+
+    const refreshedUser = await this.getLinkedUserOrThrow(record.user_id.toString());
 
     logger.info('Ultimate Mind AI credit record updated', {
       recordId: record._id.toString(),
@@ -137,7 +140,7 @@ export class UltimateMindService {
       adminUserId,
     });
 
-    return this.toRecordData(record, linkedUser);
+    return this.toRecordData(record, refreshedUser);
   }
 
   /**
@@ -155,6 +158,36 @@ export class UltimateMindService {
       userId: record.user_id.toString(),
       adminUserId,
     });
+  }
+
+  /**
+   * Synchronizes the active Ultimate Mind record from the user's current AI credit fields.
+   * Invoked after dashboard/profile AI consumption updates User.ai_credits_used.
+   */
+  async syncUsageFromUser(userId: string): Promise<void> {
+    if (!Types.ObjectId.isValid(userId)) {
+      return;
+    }
+
+    const user = await this.userModel
+      .findById(userId)
+      .select('ai_credits_used ai_credits_total is_active')
+      .lean()
+      .exec();
+
+    if (!user || user.is_active === false) {
+      return;
+    }
+
+    await this.aiCreditRecordModel.updateOne(
+      { user_id: this.toObjectId(userId), is_active: true },
+      {
+        $set: {
+          usage: user.ai_credits_used,
+          limit: user.ai_credits_total,
+        },
+      },
+    );
   }
 
   private async assertAdmin(userId: string): Promise<void> {
@@ -260,8 +293,8 @@ export class UltimateMindService {
     return {
       id: record._id.toString(),
       user: linkedUser ? this.toFullName(linkedUser) : record.full_name,
-      usage: record.usage,
-      limit: record.limit,
+      usage: linkedUser?.ai_credits_used ?? record.usage,
+      limit: linkedUser?.ai_credits_total ?? record.limit,
     };
   }
 

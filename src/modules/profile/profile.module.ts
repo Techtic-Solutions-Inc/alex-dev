@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { AuthModule } from '../auth/auth.module';
+import { UltimateMindModule } from '../ultimate-mind/ultimate-mind.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
 import { ProfileController } from './profile.controller';
 import { ProfileContent, ProfileContentSchema } from './entities/profile-content.schema';
@@ -12,6 +13,7 @@ import { ProfileService } from './profile.service';
 @Module({
   imports: [
     AuthModule,
+    UltimateMindModule,
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: ProfileContent.name, schema: ProfileContentSchema },

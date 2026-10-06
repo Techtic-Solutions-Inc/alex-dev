@@ -23,6 +23,7 @@ import {
 import { ProfileContent, ProfileContentDocument } from './entities/profile-content.schema';
 import { ProfileDownload, ProfileDownloadDocument } from './entities/profile-download.schema';
 import { ProfileContentAnalyticsService } from './profile-content-analytics.service';
+import { UltimateMindService } from '../ultimate-mind/ultimate-mind.service';
 
 @Injectable()
 export class ProfileService {
@@ -32,6 +33,7 @@ export class ProfileService {
     @InjectModel(ProfileContent.name) private readonly profileContentModel: Model<ProfileContent>,
     private readonly authService: AuthService,
     private readonly profileContentAnalyticsService: ProfileContentAnalyticsService,
+    private readonly ultimateMindService: UltimateMindService,
   ) {}
 
   async getProfile(userId: string): Promise<ProfileResponseDataDto> {
@@ -266,6 +268,7 @@ export class ProfileService {
 
     user.ai_credits_used += 1;
     await user.save();
+    void this.ultimateMindService.syncUsageFromUser(userId);
 
     void this.profileContentAnalyticsService.trackEvent(userId, 'profile_content_created', content._id.toString());
 
