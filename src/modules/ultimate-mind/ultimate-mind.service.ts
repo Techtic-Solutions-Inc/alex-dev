@@ -61,10 +61,15 @@ export class UltimateMindService {
     await this.ensureNoActiveRecordForUser(dto.user_id);
 
     if (dto.usage > dto.limit) {
-      throw new HttpException('Usage cannot exceed the credit limit', HttpStatus.UNPROCESSABLE_ENTITY, 'VALIDATION_ERROR', {
-        usage: ['Usage cannot exceed the credit limit'],
-        limit: ['Limit must be greater than or equal to usage'],
-      });
+      throw new HttpException(
+        'Usage cannot exceed the credit limit',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'VALIDATION_ERROR',
+        {
+          usage: ['Usage cannot exceed the credit limit'],
+          limit: ['Limit must be greater than or equal to usage'],
+        },
+      );
     }
 
     let record: UltimateMindAiCreditRecordDocument;
@@ -120,10 +125,15 @@ export class UltimateMindService {
     record.limit = dto.limit ?? linkedUser.ai_credits_total;
 
     if (record.usage > record.limit) {
-      throw new HttpException('Usage cannot exceed the credit limit', HttpStatus.UNPROCESSABLE_ENTITY, 'VALIDATION_ERROR', {
-        usage: ['Usage cannot exceed the credit limit'],
-        limit: ['Limit must be greater than or equal to usage'],
-      });
+      throw new HttpException(
+        'Usage cannot exceed the credit limit',
+        HttpStatus.UNPROCESSABLE_ENTITY,
+        'VALIDATION_ERROR',
+        {
+          usage: ['Usage cannot exceed the credit limit'],
+          limit: ['Limit must be greater than or equal to usage'],
+        },
+      );
     }
 
     await record.save();
@@ -229,7 +239,11 @@ export class UltimateMindService {
 
   private async findActiveRecordOrThrow(recordId: string): Promise<UltimateMindAiCreditRecordDocument> {
     if (!Types.ObjectId.isValid(recordId)) {
-      throw new HttpException('AI credit usage record not found', HttpStatus.NOT_FOUND, 'ULTIMATE_MIND_AI_CREDIT_NOT_FOUND');
+      throw new HttpException(
+        'AI credit usage record not found',
+        HttpStatus.NOT_FOUND,
+        'ULTIMATE_MIND_AI_CREDIT_NOT_FOUND',
+      );
     }
 
     const record = await this.aiCreditRecordModel
@@ -240,7 +254,11 @@ export class UltimateMindService {
       .exec();
 
     if (!record) {
-      throw new HttpException('AI credit usage record not found', HttpStatus.NOT_FOUND, 'ULTIMATE_MIND_AI_CREDIT_NOT_FOUND');
+      throw new HttpException(
+        'AI credit usage record not found',
+        HttpStatus.NOT_FOUND,
+        'ULTIMATE_MIND_AI_CREDIT_NOT_FOUND',
+      );
     }
 
     return record;
@@ -271,17 +289,13 @@ export class UltimateMindService {
     );
   }
 
-  private async loadUsersForRecords(
-    records: UltimateMindAiCreditRecordDocument[],
-  ): Promise<Map<string, UserDocument>> {
+  private async loadUsersForRecords(records: UltimateMindAiCreditRecordDocument[]): Promise<Map<string, UserDocument>> {
     const userIds = [...new Set(records.map((record) => record.user_id.toString()))];
     if (userIds.length === 0) {
       return new Map();
     }
 
-    const users = await this.userModel
-      .find({ _id: { $in: userIds.map((id) => new Types.ObjectId(id)) } })
-      .exec();
+    const users = await this.userModel.find({ _id: { $in: userIds.map((id) => new Types.ObjectId(id)) } }).exec();
 
     return new Map(users.map((user) => [user._id.toString(), user]));
   }

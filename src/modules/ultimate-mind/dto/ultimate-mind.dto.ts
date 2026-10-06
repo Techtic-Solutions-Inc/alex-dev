@@ -117,7 +117,10 @@ export class UltimateMindAiCreditListDataDto {
   @ApiProperty({ type: [AiCreditUsageItemDto] })
   ai_credit_usage!: AiCreditUsageItemDto[];
 
-  @ApiProperty({ description: 'Full name of the authenticated user viewing the Ultimate Mind screen.', example: 'Jane Doe' })
+  @ApiProperty({
+    description: 'Full name of the authenticated user viewing the Ultimate Mind screen.',
+    example: 'Jane Doe',
+  })
   full_name!: string;
 
   @ApiPropertyOptional({
