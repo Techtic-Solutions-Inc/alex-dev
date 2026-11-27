@@ -1,14 +1,37 @@
-import { config } from 'dotenv';
-import { resolve } from 'path';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import { Test, TestingModule } from '@nestjs/testing';
+import { AppModule } from '../src/app.module';
+import * as request from 'supertest';
 
-config({ path: resolve(__dirname, '../.env.test'), override: true });
+let mongoServer: MongoMemoryServer;
 
-jest.setTimeout(30_000);
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+});
 
-process.env.JWT_SECRET ??= 'test-jwt-secret-at-least-32-characters-long';
-process.env.JWT_EXPIRY ??= '3600';
-process.env.JWT_REFRESH_EXPIRY ??= '86400';
-process.env.EMAIL_VERIFICATION_URL ??= 'http://localhost:3000/api/v1/auth/verify-email';
-process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS ??= '24';
-process.env.RATE_LIMIT_POINTS = '100000';
-process.env.RATE_LIMIT_DURATION ??= '1';
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
+
+export const createApp = async (): Promise<INestApplication> => {
+  const moduleFixture: TestingModule = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
+
+  const app = moduleFixture.createNestApplication();
+  await app.init();
+  return app;
+};
+
+export const createTestUser = async (role: string) => {
+  const user = await UserModel.create({
+    email: `${role}@test.com`,
+    password: 'TestPassword123!',
+    role,
+  });
+  return user;
+};
