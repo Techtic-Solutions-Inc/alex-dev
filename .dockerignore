@@ -1,0 +1,14 @@
+.git
+.github
+node_modules
+dist
+coverage
+test
+*.md
+.env
+.env.*
+!.env.example
+npm-debug.log*
+Dockerfile
+docker-compose*.yml
+_alex_setup_deviations.json

@@ -1,7 +1,9 @@
 import { Controller, Get, Headers } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApmService } from '../../common/apm/apm.service';
 import { ApiErrorResponseDto } from '../../common/dto/api-response.dto';
-import { AuthService, SessionBootstrap } from '../auth/auth.service';
+import { AuthService } from '../auth/auth.service';
+import { HealthCheckData } from './dto/health-response.dto';
 import { HealthService } from './health.service';
 
 @ApiTags('Health')
@@ -10,13 +12,14 @@ export class HealthController {
   constructor(
     private readonly authService: AuthService,
     private readonly healthService: HealthService,
+    private readonly apmService: ApmService,
   ) {}
 
   @Get()
   @ApiOperation({
     summary: 'Check API health',
     description:
-      'Returns a lightweight liveness result and the frontend session bootstrap shape. When an Authorization bearer token is supplied, user profile fields are populated; otherwise they are null.',
+      'Returns a lightweight liveness result, runtime system health metrics, and the frontend session bootstrap shape. When an Authorization bearer token is supplied, user profile fields are populated; otherwise they are null.',
   })
   @ApiOkResponse({
     description: 'The API process is accepting requests.',
@@ -52,11 +55,16 @@ export class HealthController {
   @ApiResponse({ status: 422, description: 'Validation failed.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 503, description: 'Database is unavailable.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 500, description: 'Unexpected server error', type: ApiErrorResponseDto })
-  async check(@Headers('authorization') authorization?: string): Promise<{ message: string; data: SessionBootstrap }> {
+  async check(@Headers('authorization') authorization?: string): Promise<{ message: string; data: HealthCheckData }> {
     await this.healthService.assertDatabaseReady();
+    const session = await this.authService.resolveSession(authorization);
+    const data: HealthCheckData = {
+      ...session,
+      system_health: this.apmService.getSystemHealthSnapshot(),
+    };
     return {
       message: 'API is healthy',
-      data: await this.authService.resolveSession(authorization),
+      data,
     };
   }
 }

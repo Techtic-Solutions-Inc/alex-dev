@@ -1,4 +1,5 @@
 import { mongo } from 'mongoose';
+import { collectionExists, dropIndexIfExists, ensureCollection } from './migration-helpers';
 import { Migration } from './migration.interface';
 
 type Db = mongo.Db;
@@ -8,11 +9,6 @@ const SETTINGS_COLLECTION = 'app_settings';
 const EMAIL_INDEX = 'uniq_users_email';
 const VERIFICATION_TOKEN_INDEX = 'verification_token_hash_1';
 const SCHEMA_VERSION_KEY = 'schema_version';
-
-async function collectionExists(database: Db, name: string): Promise<boolean> {
-  const collections = await database.listCollections({ name }, { nameOnly: true }).toArray();
-  return collections.length > 0;
-}
 
 /**
  * Establishes the collections and indexes used by the initial API schema.
@@ -24,9 +20,7 @@ export const initialSchemaMigration: Migration = {
   checksum: 'sha256:12a1b2358f43471bc5a5aa2c9019b30c9b04c08cdd70b7ecfa3b75b7812c268e',
 
   async up(database: Db): Promise<void> {
-    if (!(await collectionExists(database, USERS_COLLECTION))) {
-      await database.createCollection(USERS_COLLECTION);
-    }
+    await ensureCollection(database, USERS_COLLECTION);
 
     await database.collection(USERS_COLLECTION).createIndex(
       { email: 1 },
@@ -44,9 +38,7 @@ export const initialSchemaMigration: Migration = {
       },
     );
 
-    if (!(await collectionExists(database, SETTINGS_COLLECTION))) {
-      await database.createCollection(SETTINGS_COLLECTION);
-    }
+    await ensureCollection(database, SETTINGS_COLLECTION);
 
     await database.collection(SETTINGS_COLLECTION).updateOne(
       { key: SCHEMA_VERSION_KEY },
@@ -68,13 +60,7 @@ export const initialSchemaMigration: Migration = {
 
     if (await collectionExists(database, USERS_COLLECTION)) {
       for (const indexName of [VERIFICATION_TOKEN_INDEX, EMAIL_INDEX]) {
-        try {
-          await database.collection(USERS_COLLECTION).dropIndex(indexName);
-        } catch (error) {
-          if (!(error instanceof mongo.MongoServerError) || error.code !== 27) {
-            throw error;
-          }
-        }
+        await dropIndexIfExists(database, USERS_COLLECTION, indexName);
       }
     }
   },

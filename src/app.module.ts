@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ApmModule } from './common/apm/apm.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { RateLimiterMiddleware } from './common/middleware/rate-limiter.middleware';
 import { applyEnvDefaults } from './config/env.defaults';
@@ -10,6 +11,7 @@ import { ContentLibraryModule } from './modules/content-library/content-library.
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { RealEstateProfessionalModule } from './modules/real-estate-professional/real-estate-professional.module';
 
 @Module({
   imports: [
@@ -27,6 +29,7 @@ import { ProfileModule } from './modules/profile/profile.module';
         return env;
       },
     }),
+    ApmModule,
     DatabaseModule,
     AuthModule,
     CalendarModule,
@@ -34,6 +37,7 @@ import { ProfileModule } from './modules/profile/profile.module';
     DashboardModule,
     HealthModule,
     ProfileModule,
+    RealEstateProfessionalModule,
   ],
 })
 export class AppModule implements NestModule {
