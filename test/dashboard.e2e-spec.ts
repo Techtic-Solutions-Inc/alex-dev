@@ -39,7 +39,7 @@ describe('Dashboard (e2e)', () => {
   });
 
   it('returns 401 for dashboard overview without authentication', async () => {
-    const response = await request(app.getHttpServer()).get('/api/dashboard');
+    const response = await request(app.getHttpServer()).get('/api/v1/dashboard');
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
@@ -47,7 +47,7 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 404 when the authenticated user has no dashboard data available', async () => {
     const response = await request(app.getHttpServer())
-      .get('/api/dashboard')
+      .get('/api/v1/dashboard')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(404);
@@ -56,13 +56,13 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 200 with dashboard overview data including announcements, content calendar, and metrics', async () => {
     await request(app.getHttpServer())
-      .post('/api/dashboard/announcements')
+      .post('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ ...announcementPayload, email: userEmail })
       .expect(201);
 
     await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: 'Neighborhood spotlight - East Austin',
@@ -74,13 +74,13 @@ describe('Dashboard (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Give me a short caption for a new listing.' })
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/api/dashboard')
+      .get('/api/v1/dashboard')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -116,13 +116,13 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 200 with a list of announcements for the authenticated user', async () => {
     await request(app.getHttpServer())
-      .post('/api/dashboard/announcements')
+      .post('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ ...announcementPayload, email: userEmail })
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/api/dashboard/announcements')
+      .get('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -140,7 +140,7 @@ describe('Dashboard (e2e)', () => {
   });
 
   it('returns 401 for announcements list without authentication', async () => {
-    const response = await request(app.getHttpServer()).get('/api/dashboard/announcements');
+    const response = await request(app.getHttpServer()).get('/api/v1/dashboard/announcements');
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
@@ -148,7 +148,7 @@ describe('Dashboard (e2e)', () => {
 
   it('creates a new announcement and returns 201 with the created data', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/announcements')
+      .post('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ ...announcementPayload, email: userEmail });
 
@@ -172,7 +172,7 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 400 when the announcement email format is invalid', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/announcements')
+      .post('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ ...announcementPayload, email: 'not-an-email' });
 
@@ -183,13 +183,13 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 409 when a duplicate announcement title is submitted', async () => {
     await request(app.getHttpServer())
-      .post('/api/dashboard/announcements')
+      .post('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ ...announcementPayload, email: userEmail })
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/announcements')
+      .post('/api/v1/dashboard/announcements')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ ...announcementPayload, email: userEmail });
 
@@ -199,13 +199,13 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 200 with analytics data for the authenticated user', async () => {
     await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Summarize this week in one sentence.' })
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/api/dashboard/analytics')
+      .get('/api/v1/dashboard/analytics')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -219,7 +219,7 @@ describe('Dashboard (e2e)', () => {
 
   it('allows a user to ask a question and receive a valid response', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Write a caption for a luxury condo listing.' });
 
@@ -237,7 +237,7 @@ describe('Dashboard (e2e)', () => {
 
   it('returns 400 when asking a question with empty input', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: '   ' });
 
@@ -250,7 +250,7 @@ describe('Dashboard (e2e)', () => {
     await setAiCredits(app, userEmail, { ai_credits_total: 1, ai_credits_used: 1 });
 
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Create one more idea.' });
 
@@ -262,7 +262,7 @@ describe('Dashboard (e2e)', () => {
     await setAiCredits(app, userEmail, { ai_generation_enabled: false });
 
     const response = await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Create a social media hook.' });
 
@@ -274,13 +274,13 @@ describe('Dashboard (e2e)', () => {
     await setAiCredits(app, userEmail, { ai_credits_total: 5, ai_credits_used: 2 });
 
     await request(app.getHttpServer())
-      .post('/api/dashboard/questions')
+      .post('/api/v1/dashboard/questions')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ message: 'Draft a one-line neighborhood teaser.' })
       .expect(201);
 
     const analyticsResponse = await request(app.getHttpServer())
-      .get('/api/dashboard/analytics')
+      .get('/api/v1/dashboard/analytics')
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
 
@@ -297,7 +297,7 @@ async function createAuthenticatedUser(app: INestApplication): Promise<{ token: 
   const password = 'StrongPassword123!';
 
   await request(app.getHttpServer())
-    .post('/api/auth/signup')
+    .post('/api/v1/auth/signup')
     .send({
       first_name: 'Jane',
       last_name: 'Doe',
@@ -311,10 +311,10 @@ async function createAuthenticatedUser(app: INestApplication): Promise<{ token: 
   const verificationToken = verificationTokens.get(email);
   expect(verificationToken).toBeDefined();
 
-  await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+  await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
   const loginResponse = await request(app.getHttpServer())
-    .post('/api/auth/login')
+    .post('/api/v1/auth/login')
     .send({ email, password })
     .expect(201);
 

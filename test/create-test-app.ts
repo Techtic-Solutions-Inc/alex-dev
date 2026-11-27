@@ -5,6 +5,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
 import { Connection } from 'mongoose';
 import { AppModule } from '../src/app.module';
+import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
 import { EmailVerificationService } from '../src/modules/auth/email-verification.service';
@@ -38,7 +39,7 @@ export async function createTestApp(): Promise<INestApplication> {
     .compile();
 
   const app = moduleFixture.createNestApplication();
-  app.setGlobalPrefix('api', { exclude: ['health'] });
+  app.setGlobalPrefix('api/v1');
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -52,7 +53,7 @@ export async function createTestApp(): Promise<INestApplication> {
         }),
     }),
   );
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
   await app.init();
   return app;

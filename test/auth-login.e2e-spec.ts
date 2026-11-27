@@ -22,7 +22,7 @@ describe('Auth Login & Session (e2e)', () => {
 
   async function registerVerifiedUser(email: string, password = 'StrongPassword123!'): Promise<void> {
     await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'John',
         last_name: 'Doe',
@@ -34,15 +34,14 @@ describe('Auth Login & Session (e2e)', () => {
 
     const token = verificationTokens.get(email);
     expect(token).toBeDefined();
-
-    await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token }).expect(200);
+    await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token }).expect(200);
   }
 
   it('logs in successfully with valid credentials', async () => {
     const email = uniqueEmail('login.success');
     await registerVerifiedUser(email);
 
-    const response = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'StrongPassword123!',
     });
@@ -66,7 +65,7 @@ describe('Auth Login & Session (e2e)', () => {
   });
 
   it('returns validation error for an invalid email format', async () => {
-    const response = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email: 'invalid-email',
       password: 'StrongPassword123!',
     });
@@ -88,7 +87,7 @@ describe('Auth Login & Session (e2e)', () => {
     const connection = app.get<Connection>(getConnectionToken());
     await connection.collection('users').updateOne({ email }, { $set: { is_active: false } });
 
-    const response = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'StrongPassword123!',
     });
@@ -106,7 +105,7 @@ describe('Auth Login & Session (e2e)', () => {
     const email = uniqueEmail('login.bad-password');
     await registerVerifiedUser(email);
 
-    const response = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'WrongPassword123!',
     });
@@ -122,7 +121,7 @@ describe('Auth Login & Session (e2e)', () => {
 
   it('returns validation error for a weak password', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .send({
         email: uniqueEmail('login.weak-password'),
         password: 'weak',
@@ -144,7 +143,7 @@ describe('Auth Login & Session (e2e)', () => {
     const email = uniqueEmail('login.unverified');
 
     await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'Jane',
         last_name: 'Doe',
@@ -154,7 +153,7 @@ describe('Auth Login & Session (e2e)', () => {
       })
       .expect(201);
 
-    const response = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'StrongPassword123!',
     });
@@ -172,14 +171,13 @@ describe('Auth Login & Session (e2e)', () => {
     const email = uniqueEmail('session.refresh');
     await registerVerifiedUser(email);
 
-    const loginResponse = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const loginResponse = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'StrongPassword123!',
     });
-
     const refreshToken = loginResponse.body.data.refreshToken as string;
 
-    const response = await request(app.getHttpServer()).post('/api/auth/refresh').send({ refreshToken });
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/refresh').send({ refreshToken });
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -193,7 +191,7 @@ describe('Auth Login & Session (e2e)', () => {
 
   it('returns validation error for a malformed refresh token', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/auth/refresh')
+      .post('/api/v1/auth/refresh')
       .send({ refreshToken: 'not-a-valid-token' });
 
     expect(response.status).toBe(400);
@@ -207,7 +205,7 @@ describe('Auth Login & Session (e2e)', () => {
   });
 
   it('returns unauthorized for an invalid refresh token', async () => {
-    const response = await request(app.getHttpServer()).post('/api/auth/refresh').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/refresh').send({
       refreshToken:
         'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyLTEyMyIsInRva2VuVXNlIjoicmVmcmVzaCIsImlhdCI6MTcwMDAwMDAwMCwiZXhwIjo5OTk5OTk5OTk5fQ.invalid-signature',
     });

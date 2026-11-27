@@ -20,8 +20,7 @@ describe('Auth Signup (e2e)', () => {
 
   it('registers a new user successfully', async () => {
     const email = uniqueEmail('signup.success');
-
-    const response = await request(app.getHttpServer()).post('/api/auth/signup').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/signup').send({
       first_name: 'John',
       last_name: 'Doe',
       email,
@@ -48,7 +47,7 @@ describe('Auth Signup (e2e)', () => {
 
   it('returns validation error when required fields are missing', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'John',
         email: uniqueEmail('signup.missing'),
@@ -77,9 +76,9 @@ describe('Auth Signup (e2e)', () => {
       terms_accepted: true,
     };
 
-    await request(app.getHttpServer()).post('/api/auth/signup').send(payload).expect(201);
+    await request(app.getHttpServer()).post('/api/v1/auth/signup').send(payload).expect(201);
 
-    const response = await request(app.getHttpServer()).post('/api/auth/signup').send({
+    const response = await request(app.getHttpServer()).post('/api/v1/auth/signup').send({
       first_name: 'Jane',
       last_name: 'Doe',
       email,
@@ -100,7 +99,7 @@ describe('Auth Signup (e2e)', () => {
 
   it('returns validation error for a weak password', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'John',
         last_name: 'Doe',
@@ -123,7 +122,7 @@ describe('Auth Signup (e2e)', () => {
 
   it('returns validation error when terms are not accepted', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'John',
         last_name: 'Doe',

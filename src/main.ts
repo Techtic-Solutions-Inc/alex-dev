@@ -4,7 +4,40 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Reflector } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
+import { Request, Response } from 'express';
 import { AppModule } from './app.module';
+import logger from './common/services/logger.service';
+
+const isMongoConnectionError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return (
+    error.name === 'MongoServerSelectionError' ||
+    error.message.includes('ECONNREFUSED') ||
+    error.message.includes('Server selection timed out')
+  );
+};
+
+const registerMongoConnectionGuards = (): void => {
+  process.on('uncaughtException', (error: Error) => {
+    if (isMongoConnectionError(error)) {
+      logger.warn('MongoDB unavailable; process continues for liveness probes', { message: error.message });
+      return;
+    }
+    throw error;
+  });
+
+  process.on('unhandledRejection', (reason: unknown) => {
+    if (isMongoConnectionError(reason)) {
+      logger.warn('MongoDB unavailable; process continues for liveness probes', {
+        message: reason instanceof Error ? reason.message : String(reason),
+      });
+      return;
+    }
+  });
+};
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 
@@ -21,16 +54,28 @@ const validationDetails = (errors: ValidationError[]): Record<string, string[]> 
   }, {});
 
 async function bootstrap(): Promise<void> {
+  registerMongoConnectionGuards();
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('CORS_ORIGIN')?.trim();
   const allowAllOrigins = !corsOrigin || corsOrigin === '*';
 
-  app.setGlobalPrefix('api', { exclude: ['health'] });
+  app.setGlobalPrefix('api/v1');
+
+  const expressInstance = app.getHttpAdapter().getInstance();
+  expressInstance.get('/health', (_request: Request, response: Response) => {
+    response.status(200).json({ status: 'UP' });
+  });
+  expressInstance.get('/', (_request: Request, response: Response) => {
+    response.status(200).json({ status: 'UP' });
+  });
   app.enableCors({
     origin: allowAllOrigins
       ? true
-      : corsOrigin.split(',').map((origin) => origin.trim()).filter(Boolean),
+      : corsOrigin
+          .split(',')
+          .map((origin) => origin.trim())
+          .filter(Boolean),
     credentials: true,
   });
   app.useGlobalPipes(
@@ -46,7 +91,7 @@ async function bootstrap(): Promise<void> {
         }),
     }),
   );
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
 
   const swaggerConfig = new DocumentBuilder()

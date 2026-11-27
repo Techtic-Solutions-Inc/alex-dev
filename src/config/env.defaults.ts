@@ -7,7 +7,7 @@ export function applyEnvDefaults(environment: Record<string, string | undefined>
     env.JWT_SECRET ??= 'dev-jwt-secret-at-least-32-characters-long';
     env.JWT_EXPIRY ??= '3600';
     env.JWT_REFRESH_EXPIRY ??= '86400';
-    env.EMAIL_VERIFICATION_URL ??= 'http://localhost:3000/api/auth/verify-email';
+    env.EMAIL_VERIFICATION_URL ??= 'http://localhost:3000/api/v1/auth/verify-email';
     env.EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS ??= '24';
     env.RATE_LIMIT_POINTS ??= '1000';
     env.RATE_LIMIT_DURATION ??= '1';

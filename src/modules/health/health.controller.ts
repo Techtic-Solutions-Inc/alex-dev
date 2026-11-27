@@ -2,11 +2,15 @@ import { Controller, Get, Headers } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { ApiErrorResponseDto } from '../../common/dto/api-response.dto';
 import { AuthService, SessionBootstrap } from '../auth/auth.service';
+import { HealthService } from './health.service';
 
 @ApiTags('Health')
 @Controller('health')
 export class HealthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly healthService: HealthService,
+  ) {}
 
   @Get()
   @ApiOperation({
@@ -46,8 +50,10 @@ export class HealthController {
   @ApiResponse({ status: 404, description: 'Health resource not found.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 409, description: 'Request conflict.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 422, description: 'Validation failed.', type: ApiErrorResponseDto })
+  @ApiResponse({ status: 503, description: 'Database is unavailable.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 500, description: 'Unexpected server error', type: ApiErrorResponseDto })
   async check(@Headers('authorization') authorization?: string): Promise<{ message: string; data: SessionBootstrap }> {
+    await this.healthService.assertDatabaseReady();
     return {
       message: 'API is healthy',
       data: await this.authService.resolveSession(authorization),

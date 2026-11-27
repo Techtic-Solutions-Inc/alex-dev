@@ -20,7 +20,7 @@ describe('Profile API (e2e)', () => {
 
   async function registerAndLogin(email: string, password = 'StrongPassword123!'): Promise<string> {
     await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'Joseph',
         last_name: 'Stanley',
@@ -33,9 +33,9 @@ describe('Profile API (e2e)', () => {
     const verificationToken = verificationTokens.get(email);
     expect(verificationToken).toBeDefined();
 
-    await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+    await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
-    const loginResponse = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const loginResponse = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password,
     });
@@ -49,7 +49,7 @@ describe('Profile API (e2e)', () => {
     const token = await registerAndLogin(email);
 
     const updateResponse = await request(app.getHttpServer())
-      .put('/api/profile')
+      .put('/api/v1/profile')
       .set('Authorization', `Bearer ${token}`)
       .send({
         first_name: 'Joseph',
@@ -68,9 +68,7 @@ describe('Profile API (e2e)', () => {
 
     expect(updateResponse.status).toBe(200);
 
-    const response = await request(app.getHttpServer())
-      .get('/api/profile')
-      .set('Authorization', `Bearer ${token}`);
+    const response = await request(app.getHttpServer()).get('/api/v1/profile').set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
@@ -118,7 +116,7 @@ describe('Profile API (e2e)', () => {
     const token = await registerAndLogin(email);
 
     const response = await request(app.getHttpServer())
-      .put('/api/profile')
+      .put('/api/v1/profile')
       .set('Authorization', `Bearer ${token}`)
       .send({
         first_name: 'Jane',
@@ -157,7 +155,7 @@ describe('Profile API (e2e)', () => {
     const token = await registerAndLogin(uniqueEmail('profile.invalid-email'));
 
     const response = await request(app.getHttpServer())
-      .put('/api/profile')
+      .put('/api/v1/profile')
       .set('Authorization', `Bearer ${token}`)
       .send({
         first_name: 'Joseph',
@@ -181,7 +179,7 @@ describe('Profile API (e2e)', () => {
     const token = await registerAndLogin(email);
 
     const response = await request(app.getHttpServer())
-      .post('/api/profile/change-password')
+      .post('/api/v1/profile/change-password')
       .set('Authorization', `Bearer ${token}`)
       .send({
         current_password: 'StrongPassword123!',
@@ -196,7 +194,7 @@ describe('Profile API (e2e)', () => {
       data: {},
     });
 
-    const oldPasswordLogin = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const oldPasswordLogin = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'StrongPassword123!',
     });
@@ -204,7 +202,7 @@ describe('Profile API (e2e)', () => {
     expect(oldPasswordLogin.status).toBe(401);
     expect(oldPasswordLogin.body.error.code).toBe('INVALID_CREDENTIALS');
 
-    const newPasswordLogin = await request(app.getHttpServer()).post('/api/auth/login').send({
+    const newPasswordLogin = await request(app.getHttpServer()).post('/api/v1/auth/login').send({
       email,
       password: 'NewStrongPassword456!',
     });
@@ -221,7 +219,7 @@ describe('Profile API (e2e)', () => {
     const token = await registerAndLogin(currentEmail);
 
     const response = await request(app.getHttpServer())
-      .put('/api/profile')
+      .put('/api/v1/profile')
       .set('Authorization', `Bearer ${token}`)
       .send({
         first_name: 'Joseph',

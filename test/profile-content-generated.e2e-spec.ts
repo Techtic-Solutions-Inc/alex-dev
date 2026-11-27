@@ -41,7 +41,7 @@ describe('Profile Content Generated API (e2e)', () => {
     ]);
 
     const response = await request(app.getHttpServer())
-      .get('/api/profile/content')
+      .get('/api/v1/profile/content')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -92,7 +92,7 @@ describe('Profile Content Generated API (e2e)', () => {
   });
 
   it('returns 401 when an unauthenticated user requests generated content', async () => {
-    const response = await request(app.getHttpServer()).get('/api/profile/content');
+    const response = await request(app.getHttpServer()).get('/api/v1/profile/content');
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
@@ -100,7 +100,7 @@ describe('Profile Content Generated API (e2e)', () => {
 
   it('creates generated content and returns 201', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/profile/content')
+      .post('/api/v1/profile/content')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: 'Luxury Condo Social Caption',
@@ -124,7 +124,9 @@ describe('Profile Content Generated API (e2e)', () => {
     });
 
     const connection = app.get<Connection>(getConnectionToken());
-    const contentCount = await connection.collection('profile_contents').countDocuments({ user_id: new Types.ObjectId(userId) });
+    const contentCount = await connection
+      .collection('profile_contents')
+      .countDocuments({ user_id: new Types.ObjectId(userId) });
     expect(contentCount).toBe(1);
 
     const user = await connection.collection('users').findOne<{ ai_credits_used: number }>({
@@ -135,7 +137,7 @@ describe('Profile Content Generated API (e2e)', () => {
 
   it('returns 400 when required create fields are missing or invalid', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/profile/content')
+      .post('/api/v1/profile/content')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: ' ',
@@ -173,7 +175,7 @@ describe('Profile Content Generated API (e2e)', () => {
     ]);
 
     const response = await request(app.getHttpServer())
-      .put(`/api/profile/content/${contentId}`)
+      .put(`/api/v1/profile/content/${contentId}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: 'Updated Title',
@@ -200,7 +202,7 @@ describe('Profile Content Generated API (e2e)', () => {
 
   it('returns 404 when updating a non-existent generated content item', async () => {
     const response = await request(app.getHttpServer())
-      .put(`/api/profile/content/${new Types.ObjectId().toString()}`)
+      .put(`/api/v1/profile/content/${new Types.ObjectId().toString()}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: 'Updated Title',
@@ -228,7 +230,7 @@ describe('Profile Content Generated API (e2e)', () => {
     ]);
 
     const response = await request(app.getHttpServer())
-      .delete(`/api/profile/content/${contentId}`)
+      .delete(`/api/v1/profile/content/${contentId}`)
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(204);
@@ -243,7 +245,7 @@ describe('Profile Content Generated API (e2e)', () => {
 
   it('returns 404 when deleting a non-existent generated content item', async () => {
     const response = await request(app.getHttpServer())
-      .delete(`/api/profile/content/${new Types.ObjectId().toString()}`)
+      .delete(`/api/v1/profile/content/${new Types.ObjectId().toString()}`)
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(404);
@@ -259,7 +261,7 @@ async function createAuthenticatedUser(
   const password = 'StrongPassword123!';
 
   await request(app.getHttpServer())
-    .post('/api/auth/signup')
+    .post('/api/v1/auth/signup')
     .send({
       first_name: 'Jane',
       last_name: 'Doe',
@@ -273,10 +275,10 @@ async function createAuthenticatedUser(
   const verificationToken = verificationTokens.get(email);
   expect(verificationToken).toBeDefined();
 
-  await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+  await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
   const loginResponse = await request(app.getHttpServer())
-    .post('/api/auth/login')
+    .post('/api/v1/auth/login')
     .send({ email, password })
     .expect(201);
 

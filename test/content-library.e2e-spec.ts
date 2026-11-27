@@ -40,13 +40,13 @@ describe('Content Library (e2e)', () => {
 
   it('returns 200 with a list of content items', async () => {
     const created = await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/api/content-library')
+      .get('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
 
@@ -79,7 +79,7 @@ describe('Content Library (e2e)', () => {
 
   it('creates a content item with valid data and returns 201', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem);
 
@@ -106,7 +106,7 @@ describe('Content Library (e2e)', () => {
 
   it('returns 400 with validation details when required create fields are missing', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         description: validItem.description,
@@ -131,13 +131,13 @@ describe('Content Library (e2e)', () => {
 
   it('returns 200 with the requested content item details', async () => {
     const created = await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get(`/api/content-library/${created.body.data.id}`)
+      .get(`/api/v1/content-library/${created.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -160,13 +160,13 @@ describe('Content Library (e2e)', () => {
 
   it('updates an existing content item and returns 200', async () => {
     const created = await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .put(`/api/content-library/${created.body.data.id}`)
+      .put(`/api/v1/content-library/${created.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: 'Luxury Listing Social Template v2',
@@ -187,13 +187,13 @@ describe('Content Library (e2e)', () => {
 
   it('deletes an existing content item and returns 204', async () => {
     const created = await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .delete(`/api/content-library/${created.body.data.id}`)
+      .delete(`/api/v1/content-library/${created.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(204);
@@ -202,13 +202,13 @@ describe('Content Library (e2e)', () => {
 
   it('returns filtered results from the search endpoint', async () => {
     await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem)
       .expect(201);
 
     await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         ...validItem,
@@ -222,7 +222,7 @@ describe('Content Library (e2e)', () => {
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/api/content-library/search')
+      .get('/api/v1/content-library/search')
       .query({ q: 'luxury' })
       .set('Authorization', `Bearer ${authToken}`);
 
@@ -235,13 +235,13 @@ describe('Content Library (e2e)', () => {
 
   it('supports query-based filtering on the main list endpoint', async () => {
     await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validItem)
       .expect(201);
 
     await request(app.getHttpServer())
-      .post('/api/content-library')
+      .post('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         ...validItem,
@@ -254,7 +254,7 @@ describe('Content Library (e2e)', () => {
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .get('/api/content-library')
+      .get('/api/v1/content-library')
       .query({ q: 'seller', category: 'Email Marketing' })
       .set('Authorization', `Bearer ${authToken}`);
 
@@ -267,7 +267,7 @@ describe('Content Library (e2e)', () => {
     await setUserRole(app, userEmail, 'viewer');
 
     const response = await request(app.getHttpServer())
-      .get('/api/content-library')
+      .get('/api/v1/content-library')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(403);
@@ -281,7 +281,7 @@ async function createAuthenticatedUser(app: INestApplication): Promise<{ token: 
   const password = 'StrongPassword123!';
 
   await request(app.getHttpServer())
-    .post('/api/auth/signup')
+    .post('/api/v1/auth/signup')
     .send({
       first_name: 'Jane',
       last_name: 'Doe',
@@ -295,10 +295,10 @@ async function createAuthenticatedUser(app: INestApplication): Promise<{ token: 
   const verificationToken = verificationTokens.get(email);
   expect(verificationToken).toBeDefined();
 
-  await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+  await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
   const loginResponse = await request(app.getHttpServer())
-    .post('/api/auth/login')
+    .post('/api/v1/auth/login')
     .send({ email, password })
     .expect(201);
 

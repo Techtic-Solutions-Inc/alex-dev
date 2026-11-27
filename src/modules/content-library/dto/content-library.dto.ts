@@ -21,7 +21,9 @@ const trimmedTags = ({ value }: { value: unknown }): unknown => {
     return value;
   }
 
-  return value.map((tag) => (typeof tag === 'string' ? tag.trim() : tag)).filter((tag) => typeof tag === 'string' && tag.length > 0);
+  return value
+    .map((tag) => (typeof tag === 'string' ? tag.trim() : tag))
+    .filter((tag) => typeof tag === 'string' && tag.length > 0);
 };
 
 export class CreateContentLibraryItemDto {

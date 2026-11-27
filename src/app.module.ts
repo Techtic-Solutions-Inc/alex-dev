@@ -1,9 +1,9 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { RateLimiterMiddleware } from './common/middleware/rate-limiter.middleware';
 import { applyEnvDefaults } from './config/env.defaults';
-import { databaseProviders } from './config/database.config';
-import { LoggingMiddleware } from './middleware/logging.middleware';
-import { RateLimiterMiddleware } from './middleware/rate-limiter.middleware';
+import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { ContentLibraryModule } from './modules/content-library/content-library.module';
@@ -27,7 +27,7 @@ import { ProfileModule } from './modules/profile/profile.module';
         return env;
       },
     }),
-    ...databaseProviders,
+    DatabaseModule,
     AuthModule,
     CalendarModule,
     ContentLibraryModule,
@@ -38,6 +38,6 @@ import { ProfileModule } from './modules/profile/profile.module';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(LoggingMiddleware, RateLimiterMiddleware).forRoutes('*');
+    consumer.apply(LoggerMiddleware, RateLimiterMiddleware).forRoutes('*');
   }
 }

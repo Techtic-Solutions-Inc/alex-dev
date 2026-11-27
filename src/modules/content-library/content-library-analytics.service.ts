@@ -15,7 +15,12 @@ export class ContentLibraryAnalyticsService {
 
   constructor(private readonly configService: ConfigService) {}
 
-  async trackEvent(userId: string, eventName: ContentLibraryAnalyticsEvent, itemId?: string, query?: string): Promise<void> {
+  async trackEvent(
+    userId: string,
+    eventName: ContentLibraryAnalyticsEvent,
+    itemId?: string,
+    query?: string,
+  ): Promise<void> {
     const measurementId = this.configService.get<string>('GOOGLE_ANALYTICS_MEASUREMENT_ID');
     const apiSecret = this.configService.get<string>('GOOGLE_ANALYTICS_API_SECRET');
 
