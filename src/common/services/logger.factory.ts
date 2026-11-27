@@ -8,7 +8,9 @@ export const buildApplicationLogger = () => {
   const aggregationConfig = readLoggingAggregationConfig();
   const structuredFormat = createStructuredLogFormat(aggregationConfig);
 
-  const loggerTransports: Array<transports.ConsoleTransportInstance | LogstashHttpTransport> = [new transports.Console()];
+  const loggerTransports: Array<transports.ConsoleTransportInstance | LogstashHttpTransport> = [
+    new transports.Console(),
+  ];
   const logstashTransport = createLogShippingStream(aggregationConfig);
   if (logstashTransport) {
     loggerTransports.push(logstashTransport);

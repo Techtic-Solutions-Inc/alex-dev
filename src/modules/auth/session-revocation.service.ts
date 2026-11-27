@@ -38,7 +38,11 @@ export class SessionRevocationService {
     const userId = Reflect.get(decoded, 'sub') as string;
 
     await this.revokedTokenModel
-      .updateOne({ token_hash: tokenHash }, { $set: { token_hash: tokenHash, user_id: userId, expires_at: expiresAt } }, { upsert: true })
+      .updateOne(
+        { token_hash: tokenHash },
+        { $set: { token_hash: tokenHash, user_id: userId, expires_at: expiresAt } },
+        { upsert: true },
+      )
       .exec();
   }
 

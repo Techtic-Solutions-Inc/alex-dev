@@ -35,9 +35,7 @@ describe('Auth Logout', () => {
 
     const token = loginResponse.body.token;
 
-    const response = await request(app)
-      .get('/api/auth/logout')
-      .set('Authorization', `Bearer ${token}`);
+    const response = await request(app).get('/api/auth/logout').set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
     expect(response.body.message).toContain('Successfully logged out');

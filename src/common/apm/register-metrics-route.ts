@@ -21,9 +21,6 @@ export const registerPrometheusMetricsRoute = (app: INestApplication): void => {
       rssBytes: memory.rss,
       eventLoopDelayMs: snapshot.event_loop_delay_ms,
     });
-    response
-      .status(200)
-      .type('text/plain; version=0.0.4; charset=utf-8')
-      .send(prometheusMetrics.renderMetrics());
+    response.status(200).type('text/plain; version=0.0.4; charset=utf-8').send(prometheusMetrics.renderMetrics());
   });
 };

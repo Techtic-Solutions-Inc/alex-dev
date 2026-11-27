@@ -26,6 +26,11 @@ import { RealEstateContentItem, RealEstateContentItemSchema } from './content/en
     RealEstateProfessionalContentController,
     RealEstateProfessionalBlogController,
   ],
-  providers: [RealEstateProfessionalContentService, RealEstateProfessionalBlogService, RolesGuard, BlogDetailAccessGuard],
+  providers: [
+    RealEstateProfessionalContentService,
+    RealEstateProfessionalBlogService,
+    RolesGuard,
+    BlogDetailAccessGuard,
+  ],
 })
 export class RealEstateProfessionalModule {}

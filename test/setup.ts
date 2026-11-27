@@ -30,9 +30,7 @@ export const createUser = async (email, password, isActive = true) => {
 };
 
 export const loginUser = async (email, password) => {
-  const response = await request(app)
-    .post('/api/auth/login')
-    .send({ email, password });
+  const response = await request(app).post('/api/auth/login').send({ email, password });
   return response.body.token;
 };
 

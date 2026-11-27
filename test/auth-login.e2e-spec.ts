@@ -39,18 +39,14 @@ describe('Auth Login', () => {
   });
 
   it('should return 400 for empty email', async () => {
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({ email: '', password: 'TestUser123!' });
+    const response = await request(app).post('/api/auth/login').send({ email: '', password: 'TestUser123!' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('email must not be empty');
   });
 
   it('should return 400 for empty password', async () => {
-    const response = await request(app)
-      .post('/api/auth/login')
-      .send({ email: 'user@test.com', password: '' });
+    const response = await request(app).post('/api/auth/login').send({ email: 'user@test.com', password: '' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toContain('password must not be empty');
@@ -84,8 +80,7 @@ describe('Auth Login', () => {
   });
 
   it('should return 401 for missing token on logout', async () => {
-    const response = await request(app)
-      .get('/api/auth/logout');
+    const response = await request(app).get('/api/auth/logout');
 
     expect(response.status).toBe(401);
     expect(response.body.message).toContain('Unauthorized');

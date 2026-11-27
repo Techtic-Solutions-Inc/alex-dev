@@ -68,10 +68,12 @@ describe('Real Estate Professional Auth Login (e2e)', () => {
   });
 
   it('returns validation error when password is empty', async () => {
-    const response = await request(app.getHttpServer()).post(LOGIN_PATH).send({
-      email: uniqueEmail('rep.login.empty-password'),
-      password: '',
-    });
+    const response = await request(app.getHttpServer())
+      .post(LOGIN_PATH)
+      .send({
+        email: uniqueEmail('rep.login.empty-password'),
+        password: '',
+      });
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
@@ -80,10 +82,12 @@ describe('Real Estate Professional Auth Login (e2e)', () => {
   });
 
   it('returns 404 when the email is not registered', async () => {
-    const response = await request(app.getHttpServer()).post(LOGIN_PATH).send({
-      email: uniqueEmail('rep.login.missing-user'),
-      password: 'StrongPassword123!',
-    });
+    const response = await request(app.getHttpServer())
+      .post(LOGIN_PATH)
+      .send({
+        email: uniqueEmail('rep.login.missing-user'),
+        password: 'StrongPassword123!',
+      });
 
     expect(response.status).toBe(404);
     expect(response.body.success).toBe(false);

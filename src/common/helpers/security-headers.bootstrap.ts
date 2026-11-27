@@ -10,11 +10,7 @@ export const applySecurityHeaders = (app: INestApplication, settings: SecuritySe
   expressInstance.disable('x-powered-by');
 
   expressInstance.use(
-    (
-      _request: unknown,
-      response: { setHeader: (name: string, value: string) => void },
-      next: () => void,
-    ): void => {
+    (_request: unknown, response: { setHeader: (name: string, value: string) => void }, next: () => void): void => {
       response.setHeader('X-Content-Type-Options', 'nosniff');
       response.setHeader('X-Frame-Options', 'DENY');
       response.setHeader('X-DNS-Prefetch-Control', 'off');

@@ -69,7 +69,10 @@ export class RealEstateProfessionalAuthController {
     description:
       'Authenticates a Real Estate Professional with email and password. Public access. Returns a JWT on success when the account exists, is active, and email is verified. Unregistered emails return 404; incorrect passwords return 401.',
   })
-  @ApiBody({ type: LoginDto, description: 'Sign-in form with email and password from the Real Estate Professional Sign In screen.' })
+  @ApiBody({
+    type: LoginDto,
+    description: 'Sign-in form with email and password from the Real Estate Professional Sign In screen.',
+  })
   @ApiCreatedResponse({
     description: 'Sign-in succeeded and a bearer token was issued.',
     type: LoginResponseDto,

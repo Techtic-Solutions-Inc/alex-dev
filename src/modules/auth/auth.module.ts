@@ -26,7 +26,13 @@ import { SessionRevocationService } from './session-revocation.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, Auth0AuthenticationService, EmailVerificationService, SessionRevocationService, JwtAuthGuard],
+  providers: [
+    AuthService,
+    Auth0AuthenticationService,
+    EmailVerificationService,
+    SessionRevocationService,
+    JwtAuthGuard,
+  ],
   exports: [JwtModule, AuthService, Auth0AuthenticationService, SessionRevocationService, JwtAuthGuard],
 })
 export class AuthModule {}

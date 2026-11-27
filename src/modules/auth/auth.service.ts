@@ -188,7 +188,6 @@ export class AuthService {
   }
 
   private async completeLogin(dto: LoginDto, user: UserDocument): Promise<LoginResult> {
-
     if (user.is_active === false) {
       throw new HttpException('This account is inactive. Please contact support for assistance.', 403, 'USER_INACTIVE');
     }
