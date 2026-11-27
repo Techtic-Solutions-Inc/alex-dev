@@ -4,6 +4,7 @@ import { ApmModule } from './common/apm/apm.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { RateLimiterMiddleware } from './common/middleware/rate-limiter.middleware';
 import { applyEnvDefaults } from './config/env.defaults';
+import { requireMongoDatabaseName } from './config/database-url.util';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
@@ -18,6 +19,7 @@ import { RealEstateProfessionalModule } from './modules/real-estate-professional
     ConfigModule.forRoot({
       isGlobal: true,
       cache: true,
+      ignoreEnvFile: process.env.NODE_ENV === 'test',
       validate: (environment: Record<string, string | undefined>) => {
         const env = applyEnvDefaults(environment);
         const required = ['DATABASE_URL', 'JWT_SECRET'];
@@ -26,6 +28,7 @@ import { RealEstateProfessionalModule } from './modules/real-estate-professional
             throw new Error(`Missing required environment variable: ${name}`);
           }
         }
+        requireMongoDatabaseName(env.DATABASE_URL as string);
         return env;
       },
     }),

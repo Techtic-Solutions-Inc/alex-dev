@@ -87,7 +87,11 @@ export class ApmService {
         const newrelic = require('newrelic') as {
           recordMetric: (metric: string, value: number) => void;
         };
-        const suffix = tags ? `:${Object.entries(tags).map(([k, v]) => `${k}=${v}`).join(',')}` : '';
+        const suffix = tags
+          ? `:${Object.entries(tags)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(',')}`
+          : '';
         newrelic.recordMetric(`${name}${suffix}`, value);
       },
       histogram: (name, value, tags) => {
@@ -95,7 +99,11 @@ export class ApmService {
         const newrelic = require('newrelic') as {
           recordMetric: (metric: string, value: number) => void;
         };
-        const suffix = tags ? `:${Object.entries(tags).map(([k, v]) => `${k}=${v}`).join(',')}` : '';
+        const suffix = tags
+          ? `:${Object.entries(tags)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(',')}`
+          : '';
         newrelic.recordMetric(`${name}${suffix}`, value);
       },
     };

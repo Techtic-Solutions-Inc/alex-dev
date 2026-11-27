@@ -66,6 +66,14 @@ describe('Real Estate Professional Content (e2e)', () => {
         has_previous: false,
       }),
     );
+    expect(response.body.data).toMatchObject({
+      id: response.body.data.items[0].id,
+      name: validItem.title,
+      description: validItem.description,
+      city: validItem.city,
+      link: validItem.link,
+      error: null,
+    });
   });
 
   it('creates content and returns 201', async () => {
@@ -103,7 +111,7 @@ describe('Real Estate Professional Content (e2e)', () => {
       .send(validItem)
       .expect(201);
 
-  const deleteResponse = await request(app.getHttpServer())
+    const deleteResponse = await request(app.getHttpServer())
       .delete(`/api/v1/real-estate-professional/content/${created.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`);
 

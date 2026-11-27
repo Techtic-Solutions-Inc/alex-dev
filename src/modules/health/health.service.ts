@@ -8,10 +8,6 @@ export class HealthService {
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
   async assertDatabaseReady(): Promise<void> {
-    if (this.connection.readyState === 1) {
-      return;
-    }
-
     if (this.connection.readyState === 2) {
       await new Promise<void>((resolve, reject) => {
         const timeout = setTimeout(() => {
@@ -27,9 +23,23 @@ export class HealthService {
           reject(new HttpException('Database connection is unavailable', 503, 'DATABASE_UNAVAILABLE'));
         });
       });
-      return;
+    } else if (this.connection.readyState !== 1) {
+      try {
+        await this.connection.asPromise();
+      } catch {
+        throw new HttpException('Database connection is unavailable', 503, 'DATABASE_UNAVAILABLE');
+      }
     }
 
-    throw new HttpException('Database connection is unavailable', 503, 'DATABASE_UNAVAILABLE');
+    const database = this.connection.db;
+    if (!database) {
+      throw new HttpException('Database connection is unavailable', 503, 'DATABASE_UNAVAILABLE');
+    }
+
+    try {
+      await database.admin().command({ ping: 1 });
+    } catch {
+      throw new HttpException('Database connection is unavailable', 503, 'DATABASE_UNAVAILABLE');
+    }
   }
 }

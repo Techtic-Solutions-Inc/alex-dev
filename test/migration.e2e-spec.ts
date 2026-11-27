@@ -1,42 +1,36 @@
-import request from 'supertest';
-import { Test } from '@nestjs/testing';
-import { AppModule } from '../src/app.module';
-import { INestApplication } from '@nestjs/common';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
+import { migrationRegistry } from '../src/database/migrations/migration.registry';
+import { MigrationRunner } from '../src/database/migrations/migration-runner';
+import { ensureMongoMemoryUri } from './mongodb-memory';
 
-describe('Database Migrations', () => {
-    let app: INestApplication;
-    let mongoServer: MongoMemoryServer;
+describe('Database migrations (e2e)', () => {
+  beforeAll(async () => {
+    await ensureMongoMemoryUri();
+  });
 
-    beforeAll(async () => {
-        mongoServer = await MongoMemoryServer.create();
-        const uri = mongoServer.getUri();
-        process.env.DATABASE_URL = uri;
+  afterAll(async () => {
+    // Leave the shared in-process memory server running for other e2e files in this worker.
+  });
 
-        const moduleFixture = await Test.createTestingModule({
-            imports: [AppModule],
-        }).compile();
+  it('applies and rolls back registry migrations against in-memory MongoDB', async () => {
+    const connection = mongoose.createConnection(process.env.DATABASE_URL!);
+    await connection.asPromise();
 
-        app = moduleFixture.createNestApplication();
-        await app.init();
-    });
+    const database = connection.db;
+    if (!database) {
+      throw new Error('Expected MongoDB database handle after in-memory connection');
+    }
 
-    afterAll(async () => {
-        await app.close();
-        await mongoServer.stop();
-        await mongoose.disconnect();
-    });
+    const runner = new MigrationRunner(database, migrationRegistry, { owner: 'e2e-migrations' });
+    const upResult = await runner.up();
 
-    it('should run initial migration', async () => {
-        const response = await request(app.getHttpServer()).post('/api/migrate');
-        expect(response.status).toBe(200);
-        expect(response.body).toEqual({ message: 'Migration completed successfully' });
-    });
+    expect(upResult.applied.length).toBeGreaterThan(0);
+    const statusAfterUp = await runner.status();
+    expect(statusAfterUp.every((entry) => entry.status === 'applied')).toBe(true);
 
-    it('should rollback the last migration', async () => {
-        const response = await request(app.getHttpServer()).post('/api/migrate/rollback');
-        expect(response.status).toBe(200);
-        expect(response.body).toEqual({ message: 'Rollback completed successfully' });
-    });
+    const reverted = await runner.down(1);
+    expect(reverted).toHaveLength(1);
+
+    await connection.close();
+  });
 });

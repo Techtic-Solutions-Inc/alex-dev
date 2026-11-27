@@ -198,6 +198,17 @@ bash scripts/kube-deploy.sh production
 See [deploy/kubernetes/README.md](deploy/kubernetes/README.md) for secret creation,
 hostname configuration, and integration with `scripts/deploy.sh`.
 
+## Production error handling and logging
+
+In production the API relies on structured Winston logging (`LOG_LEVEL`), the
+global HTTP exception filter for consistent client-facing errors
+(`success`, `message`, `error.code`, `path`, `timestamp`), and optional APM
+export (Datadog/New Relic) for request latency and failures. Uncaught errors are
+normalized before they reach clients — never log secrets or raw credentials.
+Configure `LOG_LEVEL=info` or `warn` in production, forward container logs to your
+aggregator, and alert on elevated `5xx` rates and MongoDB connectivity errors
+reported by `GET /api/v1/health`.
+
 ## Performance monitoring (APM)
 
 Optional Datadog or New Relic APM integrates at process startup and records HTTP

@@ -74,7 +74,12 @@ export class RealEstateProfessionalContentController {
     description:
       'Returns paginated active content templates for the Content List screen. Public access is allowed. Supports `search`, `sort` (`newest`|`oldest`), `page`, and `limit` query parameters.',
   })
-  @ApiQuery({ name: 'search', required: false, description: 'Optional search term. Empty values return 400.', example: 'instagram' })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    description: 'Optional search term. Empty values return 400.',
+    example: 'instagram',
+  })
   @ApiQuery({ name: 'sort', required: false, enum: ['newest', 'oldest'], example: 'newest' })
   @ApiQuery({ name: 'page', required: false, example: 1 })
   @ApiQuery({ name: 'limit', required: false, example: 20 })

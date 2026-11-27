@@ -13,6 +13,31 @@ describe('Setup: GET /api/v1/health (e2e)', () => {
     await app.close();
   });
 
+  it('returns validation error envelope for invalid bearer-only prefix', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/auth/signup')
+      .send({
+        first_name: '',
+        last_name: 'User',
+        email: 'not-an-email',
+        password: 'short',
+        terms_accepted: false,
+      })
+      .expect(400);
+
+    expect(response.body.success).toBe(false);
+    expect(response.body.message).toBe('Validation failed');
+    expect(response.body.error.code).toBe('VALIDATION_ERROR');
+    expect(response.body.error.details).toEqual(
+      expect.objectContaining({
+        first_name: expect.any(Array),
+        email: expect.any(Array),
+        password: expect.any(Array),
+        terms_accepted: expect.any(Array),
+      }),
+    );
+  });
+
   it('returns 200 with success envelope and UP status when database is connected', async () => {
     const response = await request(app.getHttpServer()).get('/api/v1/health').expect(200);
 
@@ -44,31 +69,6 @@ describe('Setup: GET /api/v1/health (e2e)', () => {
           event_loop_delay_ms: expect.any(Number),
           apm_enabled: expect.any(Boolean),
         }),
-      }),
-    );
-  });
-
-  it('returns validation error envelope for invalid bearer-only prefix', async () => {
-    const response = await request(app.getHttpServer())
-      .post('/api/v1/auth/signup')
-      .send({
-        first_name: '',
-        last_name: 'User',
-        email: 'not-an-email',
-        password: 'short',
-        terms_accepted: false,
-      })
-      .expect(400);
-
-    expect(response.body.success).toBe(false);
-    expect(response.body.message).toBe('Validation failed');
-    expect(response.body.error.code).toBe('VALIDATION_ERROR');
-    expect(response.body.error.details).toEqual(
-      expect.objectContaining({
-        first_name: expect.any(Array),
-        email: expect.any(Array),
-        password: expect.any(Array),
-        terms_accepted: expect.any(Array),
       }),
     );
   });

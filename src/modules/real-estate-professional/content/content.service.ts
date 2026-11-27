@@ -34,9 +34,10 @@ export class RealEstateProfessionalContentService {
     ]);
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
-    return {
-      items: records.map((item) => this.toResponse(item)),
-      pagination: {
+    const items = records.map((item) => this.toResponse(item));
+    return this.toListData(
+      items,
+      {
         page,
         limit,
         total,
@@ -44,7 +45,7 @@ export class RealEstateProfessionalContentService {
         has_next: page < totalPages,
         has_previous: page > 1 && total > 0,
       },
-    };
+    );
   }
 
   async createItem(userId: string, dto: CreateRealEstateContentDto): Promise<RealEstateContentItemResponseDto> {
@@ -63,7 +64,7 @@ export class RealEstateProfessionalContentService {
         phone: dto.phone.trim(),
         is_active: true,
       });
-      return this.toResponse(item);
+      return this.toResponse(await this.requirePersistedItem(item._id));
     } catch (error) {
       if (this.isDuplicateKeyError(error)) {
         throw this.duplicateTitleException();
@@ -112,7 +113,7 @@ export class RealEstateProfessionalContentService {
       throw error;
     }
 
-    return this.toResponse(item);
+    return this.toResponse(await this.requirePersistedItem(item._id));
   }
 
   async deleteItem(userId: string, itemId: string): Promise<void> {
@@ -137,12 +138,7 @@ export class RealEstateProfessionalContentService {
 
     if (query.search?.trim()) {
       const searchRegex = new RegExp(this.escapeRegex(query.search.trim()), 'i');
-      filter.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { city: searchRegex },
-        { tags: searchRegex },
-      ];
+      filter.$or = [{ title: searchRegex }, { description: searchRegex }, { city: searchRegex }, { tags: searchRegex }];
     }
 
     return filter;
@@ -180,6 +176,16 @@ export class RealEstateProfessionalContentService {
     return item;
   }
 
+  private async requirePersistedItem(
+    itemId: Types.ObjectId,
+  ): Promise<RealEstateContentItemDocument> {
+    const item = await this.contentModel.findById(itemId).exec();
+    if (!item) {
+      throw new HttpException('Database connection is unavailable', HttpStatus.SERVICE_UNAVAILABLE, 'DATABASE_UNAVAILABLE');
+    }
+    return item;
+  }
+
   private duplicateTitleException(): HttpException {
     return new HttpException(
       'A content item with this name already exists',
@@ -199,6 +205,23 @@ export class RealEstateProfessionalContentService {
       });
     }
     return new Types.ObjectId(value);
+  }
+
+  private toListData(
+    items: RealEstateContentItemResponseDto[],
+    pagination: RealEstateContentListDataDto['pagination'],
+  ): RealEstateContentListDataDto {
+    const preview = items[0];
+    return {
+      items,
+      pagination,
+      id: preview?.id ?? null,
+      name: preview?.name ?? null,
+      description: preview?.description ?? null,
+      city: preview?.city ?? null,
+      link: preview?.link ?? null,
+      error: null,
+    };
   }
 
   private toResponse(item: RealEstateContentItemDocument): RealEstateContentItemResponseDto {

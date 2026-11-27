@@ -41,6 +41,12 @@ describe('RealEstateProfessionalContentController', () => {
         has_next: false,
         has_previous: false,
       },
+      id: null,
+      name: null,
+      description: null,
+      city: null,
+      link: null,
+      error: null,
     });
 
     const result = await controller.listItems({ page: 1, limit: 20, sort: 'newest' });
@@ -63,17 +69,14 @@ describe('RealEstateProfessionalContentController', () => {
       updated_at: '2026-01-01T00:00:00.000Z',
     });
 
-    const result = await controller.createItem(
-      { user: { sub: 'user-id', tokenUse: 'access' } } as never,
-      {
-        title: 'Title',
-        description: 'Description',
-        image_url: 'https://cdn.example.com/a.jpg',
-        tags: [],
-        phone: '+1-555-0100',
-        terms_accepted: true,
-      },
-    );
+    const result = await controller.createItem({ user: { sub: 'user-id', tokenUse: 'access' } } as never, {
+      title: 'Title',
+      description: 'Description',
+      image_url: 'https://cdn.example.com/a.jpg',
+      tags: [],
+      phone: '+1-555-0100',
+      terms_accepted: true,
+    });
 
     expect(result.message).toBe('Content item created successfully');
     expect(service.createItem).toHaveBeenCalledWith('user-id', expect.any(Object));
@@ -94,11 +97,9 @@ describe('RealEstateProfessionalContentController', () => {
       updated_at: '2026-01-02T00:00:00.000Z',
     });
 
-    const result = await controller.updateItem(
-      { user: { sub: 'user-id', tokenUse: 'access' } } as never,
-      'id',
-      { title: 'Updated' },
-    );
+    const result = await controller.updateItem({ user: { sub: 'user-id', tokenUse: 'access' } } as never, 'id', {
+      title: 'Updated',
+    });
 
     expect(result.message).toBe('Content item updated successfully');
     expect(service.updateItem).toHaveBeenCalledWith('user-id', 'id', { title: 'Updated' });

@@ -95,7 +95,10 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)), new ApmInterceptor(app.get(ApmService)));
+  app.useGlobalInterceptors(
+    new ResponseEnvelopeInterceptor(app.get(Reflector)),
+    new ApmInterceptor(app.get(ApmService)),
+  );
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Backend API')

@@ -179,7 +179,8 @@ export class UpdateRealEstateContentDto {
 
 export class RealEstateContentListQueryDto {
   @ApiPropertyOptional({
-    description: 'Free-text search across title, description, tags, and city. Omit to list all; empty values are rejected.',
+    description:
+      'Free-text search across title, description, tags, and city. Omit to list all; empty values are rejected.',
     example: 'instagram',
   })
   @IsOptional()
@@ -276,4 +277,41 @@ export class RealEstateContentListDataDto {
 
   @ApiProperty({ type: RealEstateContentPaginationDto })
   pagination!: RealEstateContentPaginationDto;
+
+  @ApiProperty({
+    description:
+      'Content List screen: primary row identifier mirrored from the first item (null when the list is empty).',
+    example: '66df0b7814b3e891e4ebcd21',
+    nullable: true,
+  })
+  id!: string | null;
+
+  @ApiProperty({
+    description: 'Content List screen title field mirrored from the first item.',
+    example: 'Hates to see me coming',
+    nullable: true,
+  })
+  name!: string | null;
+
+  @ApiProperty({
+    description: 'Card description mirrored from the first list item.',
+    nullable: true,
+  })
+  description!: string | null;
+
+  @ApiProperty({
+    description: 'Localized city label mirrored from the first list item.',
+    example: 'Austin',
+    nullable: true,
+  })
+  city!: string | null;
+
+  @ApiProperty({
+    description: 'Destination link mirrored from the first list item.',
+    nullable: true,
+  })
+  link!: string | null;
+
+  @ApiProperty({ description: 'Compatibility error slot; null on success.', example: null, nullable: true })
+  error!: null;
 }
