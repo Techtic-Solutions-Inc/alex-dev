@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { AuthModule } from '../auth/auth.module';
 import { CalendarModule } from '../calendar/calendar.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
@@ -19,6 +18,6 @@ import { DashboardAnalyticsService } from './dashboard-analytics.service';
     ]),
   ],
   controllers: [DashboardController],
-  providers: [DashboardService, DashboardAnalyticsService, JwtAuthGuard],
+  providers: [DashboardService, DashboardAnalyticsService],
 })
 export class DashboardModule {}

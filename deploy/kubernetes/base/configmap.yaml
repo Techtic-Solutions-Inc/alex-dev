@@ -6,6 +6,7 @@ data:
   NODE_ENV: production
   PORT: "3000"
   LOG_LEVEL: info
+  LOG_SERVICE_NAME: backend-api
   JWT_ALGORITHM: HS256
   ACCESS_TOKEN_EXPIRE_MINUTES: "60"
   REFRESH_TOKEN_EXPIRE_DAYS: "30"
@@ -16,9 +17,14 @@ data:
   RATE_LIMIT_DURATION: "1"
   RATE_LIMIT_STRATEGY: "fixed"
   CORS_ORIGIN: "*"
+  TRUST_PROXY: "true"
+  FORCE_HTTPS: "true"
+  SECURITY_HSTS_ENABLED: "false"
   APM_ENABLED: "false"
   APM_PROVIDER: datadog
   APM_SLOW_REQUEST_THRESHOLD_MS: "2000"
   DD_SERVICE: backend-api
   DD_ENV: production
   DD_TRACE_AGENT_PORT: "8126"
+  METRICS_ENABLED: "true"
+  METRICS_PREFIX: backend_api

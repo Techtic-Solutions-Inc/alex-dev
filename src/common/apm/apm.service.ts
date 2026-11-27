@@ -3,6 +3,7 @@ import logger from '../services/logger.service';
 import { readApmConfig } from './apm.config';
 import { ApmConfig, HttpRequestMetric, SystemHealthSnapshot } from './apm.types';
 import { EventLoopMonitorService } from './event-loop-monitor.service';
+import { PrometheusMetricsService } from './prometheus-metrics.service';
 
 type StatsClient = {
   increment: (name: string, value?: number, tags?: Record<string, string>) => void;
@@ -14,7 +15,10 @@ export class ApmService {
   private readonly config: ApmConfig;
   private readonly statsClient: StatsClient | null;
 
-  constructor(private readonly eventLoopMonitor: EventLoopMonitorService) {
+  constructor(
+    private readonly eventLoopMonitor: EventLoopMonitorService,
+    private readonly prometheusMetrics: PrometheusMetricsService,
+  ) {
     this.config = readApmConfig();
     this.statsClient = this.resolveStatsClient();
   }
@@ -38,7 +42,8 @@ export class ApmService {
     this.statsClient?.increment('api.http.requests', 1, tags);
     this.statsClient?.histogram('api.http.request.duration_ms', metric.durationMs, tags);
 
-    if (metric.durationMs >= this.config.slowRequestThresholdMs) {
+    const isSlow = metric.durationMs >= this.config.slowRequestThresholdMs;
+    if (isSlow) {
       logger.warn('Slow HTTP request detected', {
         method: metric.method,
         route: metric.route,
@@ -48,10 +53,19 @@ export class ApmService {
       });
       this.statsClient?.increment('api.http.slow_requests', 1, tags);
     }
+
+    this.prometheusMetrics.recordHttpRequest({
+      method: metric.method,
+      route: metric.route,
+      statusCode: metric.statusCode,
+      durationMs: metric.durationMs,
+      slow: isSlow,
+    });
   }
 
   recordError(name: string, message: string): void {
     this.statsClient?.increment('api.errors', 1, { name, message: message.slice(0, 120) });
+    this.prometheusMetrics.recordError(name);
   }
 
   getSystemHealthSnapshot(): SystemHealthSnapshot {

@@ -1,46 +1,37 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import { Test } from '@nestjs/testing';
 import { AppModule } from '../src/app.module';
-import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
+import request from 'supertest';
 
-let app: INestApplication;
-let jwtService: JwtService;
+let mongoServer: MongoMemoryServer;
+let app;
 
-const users = [
-  { email: 'admin@test.com', role: 'admin', password: 'TestAdmin123!', is_active: true },
-  { email: 'user@test.com', role: 'user', password: 'TestUser123!', is_active: true },
-  { email: 'viewer@test.com', role: 'viewer', password: 'TestViewer123!', is_active: true },
-  { email: 'inactive@test.com', role: 'user', password: 'TestInactive123!', is_active: false },
-  { email: 'newuser@test.com', role: 'user', password: 'NewUser123!', is_active: false },
-];
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
 
-async function setup() {
-  const moduleFixture: TestingModule = await Test.createTestingModule({
+  const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
   }).compile();
 
-  app = moduleFixture.createNestApplication();
+  app = moduleRef.createNestApplication();
   await app.init();
+});
 
-  jwtService = app.get<JwtService>(JwtService);
-  const configService = app.get<ConfigService>(ConfigService);
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
 
-  // Create users in the database
-  for (const user of users) {
-    await request(app.getHttpServer()).post('/api/signup').send({
-      first_name: 'Test',
-      last_name: 'User',
-      email: user.email,
-      password: user.password,
-      terms_accepted: true,
-    });
-  }
-}
+export const createUser = async (email, password, isActive = true) => {
+  // Logic to create a user in the test database
+};
 
-async function teardown() {
-  // Cleanup logic to remove users from the database
-}
+export const loginUser = async (email, password) => {
+  const response = await request(app).post('/api/auth/login').send({ email, password });
+  return response.body.token;
+};
 
-export { setup, teardown, app, jwtService };
+export { app };

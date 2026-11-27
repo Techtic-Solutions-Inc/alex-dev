@@ -3,6 +3,10 @@
 The API ships with optional Application Performance Monitoring (APM) that records
 request latency, error rates, runtime resource usage, and event-loop health.
 
+## Prometheus metrics (open metrics)
+
+Prometheus scrapes `GET /metrics` (text exposition format). Metrics are always recorded through the shared `ApmInterceptor` when `METRICS_ENABLED=true` (default in staging/production). See [monitoring-alerting.md](./monitoring-alerting.md) for scrape configuration, Grafana dashboards, and alert rules.
+
 ## Providers
 
 | Provider | Enable | Required secrets / env |

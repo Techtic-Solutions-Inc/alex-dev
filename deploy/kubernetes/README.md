@@ -35,7 +35,7 @@ CPU and memory utilization.
 
 1. Container image published (for example `ghcr.io/<owner>/<repo>:production-latest`)
 2. NGINX Ingress Controller installed in the cluster
-3. TLS certificate material (or cert-manager) for staging and production hosts
+3. TLS certificate material (or cert-manager) for staging and production hosts — see [`docs/ssl-tls-security-hardening.md`](../../docs/ssl-tls-security-hardening.md)
 4. Kubernetes Secret `backend-api-secrets` in the target namespace
 
 ```bash

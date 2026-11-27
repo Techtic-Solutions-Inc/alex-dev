@@ -32,7 +32,7 @@ export class RegisteredUserResponseDto {
 
 export class SignupResponseDto {
   @ApiProperty({ description: 'Indicates the request completed successfully.', example: true })
-  success!: true;
+  success!: boolean;
 
   @ApiProperty({
     description: 'UI-safe sign-up outcome message.',
@@ -85,6 +85,20 @@ export class LoginUserResponseDto {
     nullable: true,
   })
   phone!: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Profile description shown on the Sign In dashboard.',
+    example: 'Licensed agent serving the greater metro area.',
+    nullable: true,
+  })
+  description!: string | null;
+
+  @ApiPropertyOptional({
+    description: 'Optional profile link for the signed-in user.',
+    example: 'https://example.com/agents/john-doe',
+    nullable: true,
+  })
+  link!: string | null;
 }
 
 export class LoginResponseDataDto extends LoginUserResponseDto {
@@ -113,7 +127,7 @@ export class LoginResponseDataDto extends LoginUserResponseDto {
 
 export class LoginResponseDto {
   @ApiProperty({ description: 'Indicates the request completed successfully.', example: true })
-  success!: true;
+  success!: boolean;
 
   @ApiProperty({ description: 'UI-safe sign-in outcome message.', example: 'Signed in successfully' })
   message!: string;

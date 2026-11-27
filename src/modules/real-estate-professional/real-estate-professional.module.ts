@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AuthModule } from '../auth/auth.module';
+import { RealEstateProfessionalAuthController } from './auth/real-estate-professional-auth.controller';
 import { User, UserSchema } from '../auth/entities/user.schema';
 import { RealEstateProfessionalBlogController } from './blog/blog.controller';
 import { BlogDetailAccessGuard } from './blog/blog-detail.guard';
@@ -21,11 +21,14 @@ import { RealEstateContentItem, RealEstateContentItemSchema } from './content/en
       { name: RealEstateBlogPost.name, schema: RealEstateBlogPostSchema },
     ]),
   ],
-  controllers: [RealEstateProfessionalContentController, RealEstateProfessionalBlogController],
+  controllers: [
+    RealEstateProfessionalAuthController,
+    RealEstateProfessionalContentController,
+    RealEstateProfessionalBlogController,
+  ],
   providers: [
     RealEstateProfessionalContentService,
     RealEstateProfessionalBlogService,
-    JwtAuthGuard,
     RolesGuard,
     BlogDetailAccessGuard,
   ],

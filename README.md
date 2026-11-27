@@ -200,6 +200,8 @@ hostname configuration, and integration with `scripts/deploy.sh`.
 
 ## Production error handling and logging
 
+See [docs/logging-aggregation.md](docs/logging-aggregation.md) for ELK/Fluent Bit shipping, correlation IDs, and Kibana dashboards.
+
 In production the API relies on structured Winston logging (`LOG_LEVEL`), the
 global HTTP exception filter for consistent client-facing errors
 (`success`, `message`, `error.code`, `path`, `timestamp`), and optional APM
@@ -218,5 +220,5 @@ latency, error rates, slow requests, and runtime health. Configure via `APM_*` a
 `GET /api/v1/health` now returns a `system_health` block (uptime, memory, event-loop
 delay, APM status) for operational insight.
 
-See [docs/performance-monitoring.md](docs/performance-monitoring.md) for metrics,
+See [docs/monitoring-alerting.md](docs/monitoring-alerting.md) for Prometheus/Grafana setup and [docs/performance-monitoring.md](docs/performance-monitoring.md) for metrics,
 dashboards, and documented bottleneck areas.

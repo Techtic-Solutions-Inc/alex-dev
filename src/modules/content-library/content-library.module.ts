@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AuthModule } from '../auth/auth.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
@@ -18,7 +17,7 @@ import { ContentLibraryItem, ContentLibraryItemSchema } from './entities/content
     ]),
   ],
   controllers: [ContentLibraryController],
-  providers: [ContentLibraryService, ContentLibraryAnalyticsService, JwtAuthGuard, RolesGuard],
+  providers: [ContentLibraryService, ContentLibraryAnalyticsService, RolesGuard],
   exports: [ContentLibraryService],
 })
 export class ContentLibraryModule {}

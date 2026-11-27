@@ -7,7 +7,10 @@ import { Reflector } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { Request, Response } from 'express';
 import { AppModule } from './app.module';
+import { applySecurityHeaders } from './common/helpers/security-headers.bootstrap';
 import logger from './common/services/logger.service';
+import { resolveSecuritySettings } from './config/security.config';
+import { buildHttpsOptions } from './config/tls.config';
 
 const isMongoConnectionError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
@@ -43,6 +46,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { ApmInterceptor } from './common/interceptors/apm.interceptor';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 import { ApmService } from './common/apm/apm.service';
+import { registerPrometheusMetricsRoute } from './common/apm/register-metrics-route';
 
 const validationDetails = (errors: ValidationError[]): Record<string, string[]> =>
   errors.reduce<Record<string, string[]>>((details, error) => {
@@ -58,20 +62,39 @@ const validationDetails = (errors: ValidationError[]): Record<string, string[]> 
 
 async function bootstrap(): Promise<void> {
   registerMongoConnectionGuards();
-  const app = await NestFactory.create(AppModule);
+  const httpsOptions = buildHttpsOptions(process.env);
+  const app = await NestFactory.create(AppModule, httpsOptions ? { httpsOptions } : undefined);
   const configService = app.get(ConfigService);
   const corsOrigin = configService.get<string>('CORS_ORIGIN')?.trim();
   const allowAllOrigins = !corsOrigin || corsOrigin === '*';
 
+  const securityEnvironment: Record<string, string | undefined> = {
+    NODE_ENV: configService.get<string>('NODE_ENV'),
+    TRUST_PROXY: configService.get<string>('TRUST_PROXY'),
+    FORCE_HTTPS: configService.get<string>('FORCE_HTTPS'),
+    SECURITY_HSTS_ENABLED: configService.get<string>('SECURITY_HSTS_ENABLED'),
+    SECURITY_HSTS_MAX_AGE_SECONDS: configService.get<string>('SECURITY_HSTS_MAX_AGE_SECONDS'),
+  };
+  let securitySettings = resolveSecuritySettings(securityEnvironment);
+  if (httpsOptions && configService.get<string>('SECURITY_HSTS_ENABLED') === undefined) {
+    securitySettings = { ...securitySettings, hstsEnabled: true };
+  }
+
   app.setGlobalPrefix('api/v1');
 
   const expressInstance = app.getHttpAdapter().getInstance();
+  if (securitySettings.trustProxy) {
+    expressInstance.set('trust proxy', 1);
+  }
+  applySecurityHeaders(app, securitySettings);
   expressInstance.get('/health', (_request: Request, response: Response) => {
     response.status(200).json({ status: 'UP' });
   });
   expressInstance.get('/', (_request: Request, response: Response) => {
     response.status(200).json({ status: 'UP' });
   });
+
+  registerPrometheusMetricsRoute(app);
   app.enableCors({
     origin: allowAllOrigins
       ? true
@@ -111,6 +134,12 @@ async function bootstrap(): Promise<void> {
   const configuredPort = Number(configService.get<string>('PORT', '3000'));
   const port = Number.isInteger(configuredPort) && configuredPort >= 0 ? configuredPort : 3000;
   await app.listen(port);
+  logger.info('HTTP server started', {
+    port,
+    tls: Boolean(httpsOptions),
+    trustProxy: securitySettings.trustProxy,
+    forceHttps: securitySettings.forceHttps,
+  });
 }
 
 void bootstrap().catch((error: unknown) => {

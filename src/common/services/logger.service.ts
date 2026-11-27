@@ -1,9 +1,5 @@
-import { createLogger, format, transports } from 'winston';
+import { buildApplicationLogger } from './logger.factory';
 
-const logger = createLogger({
-  level: process.env.LOG_LEVEL ?? 'info',
-  format: format.combine(format.timestamp(), format.errors({ stack: false }), format.json()),
-  transports: [new transports.Console()],
-});
+const logger = buildApplicationLogger();
 
 export default logger;

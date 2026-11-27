@@ -9,6 +9,7 @@ import { HttpException } from '../../common/exceptions/http.exception';
 import { generateToken, TokenPayload } from '../../common/utils/token.util';
 import { Auth0AuthenticationService } from './auth0-authentication.service';
 import { EmailVerificationService } from './email-verification.service';
+import { SessionRevocationService } from './session-revocation.service';
 import { LoginDto } from './dto/login.dto';
 import { SignupDto } from './dto/signup.dto';
 import { User, UserDocument } from './entities/user.schema';
@@ -38,6 +39,8 @@ export interface LoginResult {
   last_name: string;
   email: string;
   phone: string | null;
+  description: string | null;
+  link: string | null;
   token: string;
   accessToken: string;
   refreshToken?: string;
@@ -81,6 +84,7 @@ export class AuthService {
     @InjectModel(User.name) private readonly userModel: Model<User>,
     private readonly emailVerificationService: EmailVerificationService,
     private readonly auth0AuthenticationService: Auth0AuthenticationService,
+    private readonly sessionRevocationService: SessionRevocationService,
   ) {}
 
   async signup(dto: SignupDto): Promise<RegisteredUser> {
@@ -159,6 +163,20 @@ export class AuthService {
     return this.toRegisteredUser(user);
   }
 
+  async loginRealEstateProfessional(dto: LoginDto): Promise<LoginResult> {
+    const user = await this.userModel.findOne({ email: dto.email }).select('+password_hash').exec();
+
+    if (!user) {
+      throw new HttpException('No account was found for this email address', 404, 'USER_NOT_FOUND');
+    }
+
+    return this.completeLogin(dto, user);
+  }
+
+  async logout(accessToken: string): Promise<void> {
+    await this.sessionRevocationService.revokeAccessToken(accessToken);
+  }
+
   async login(dto: LoginDto): Promise<LoginResult> {
     const user = await this.userModel.findOne({ email: dto.email }).select('+password_hash').exec();
 
@@ -166,6 +184,10 @@ export class AuthService {
       throw new HttpException('Email or password is incorrect', 401, 'INVALID_CREDENTIALS');
     }
 
+    return this.completeLogin(dto, user);
+  }
+
+  private async completeLogin(dto: LoginDto, user: UserDocument): Promise<LoginResult> {
     if (user.is_active === false) {
       throw new HttpException('This account is inactive. Please contact support for assistance.', 403, 'USER_INACTIVE');
     }
@@ -292,7 +314,7 @@ export class AuthService {
     }
 
     const expectedHash = Buffer.from(parts[2], 'hex');
-    const derivedKey = (await scrypt(password, Buffer.from(parts[1], 'hex'), expectedHash.length)) as Buffer;
+    const derivedKey = (await scrypt(password, Buffer.from(parts[1], 'hex'), 64)) as Buffer;
     return timingSafeEqual(expectedHash, derivedKey);
   }
 
@@ -300,10 +322,57 @@ export class AuthService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  private isDuplicateKeyError(error: any): boolean {
+    return error.code === 11000;
+  }
+
   private verificationTokenTtlMs(): number {
-    const configuredHours = this.configService.get<string>('EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS');
-    const hours = configuredHours && /^\d+$/.test(configuredHours) ? Number(configuredHours) : 24;
-    return Number.isSafeInteger(hours) && hours > 0 ? hours * 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    return 24 * 60 * 60 * 1000; // 24 hours
+  }
+
+  private userDisplayName(user: UserDocument): string {
+    return `${user.first_name} ${user.last_name}`.trim();
+  }
+
+  private toSessionProfile(user: UserDocument): SessionProfileSummary {
+    return {
+      bio: user.bio,
+      description: user.description,
+      image: user.image,
+      name: this.userDisplayName(user),
+    };
+  }
+
+  private toRegisteredUser(user: UserDocument): RegisteredUser {
+    const fullName = this.userDisplayName(user);
+    return {
+      id: user._id.toString(),
+      name: fullName,
+      full_name: fullName,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      email_verified: user.email_verified,
+    };
+  }
+
+  private toLoginUser(user: UserDocument): LoginResult {
+    const fullName = this.userDisplayName(user);
+    return {
+      id: user._id.toString(),
+      name: fullName,
+      full_name: fullName,
+      first_name: user.first_name,
+      last_name: user.last_name,
+      email: user.email,
+      phone: user.phone,
+      description: user.description,
+      link: user.link,
+      token: '',
+      accessToken: '',
+      tokenType: 'Bearer',
+    };
   }
 
   private createEmptySession(): SessionBootstrap {
@@ -328,18 +397,17 @@ export class AuthService {
     };
   }
 
-  private toSessionBootstrap(user: UserDocument, token: string | null): SessionBootstrap {
-    const fullName = `${user.first_name} ${user.last_name}`.trim();
-    const bio = user.bio ?? null;
-    const description = user.description ?? bio;
-    const addressDetails = {
-      street: user.street ?? null,
-      city: user.city ?? null,
-      state: user.state ?? null,
-      zip: user.zip ?? null,
-      country: user.country ?? null,
-    };
+  private extractOptionalBearerToken(authorization?: string): string | null {
+    if (!authorization) {
+      return null;
+    }
 
+    const parts = authorization.split(' ');
+    return parts.length === 2 && parts[0] === 'Bearer' ? parts[1] : null;
+  }
+
+  private toSessionBootstrap(user: UserDocument, token: string): SessionBootstrap {
+    const fullName = this.userDisplayName(user);
     return {
       status: 'UP',
       id: user._id.toString(),
@@ -348,73 +416,16 @@ export class AuthService {
       first_name: user.first_name,
       last_name: user.last_name,
       email: user.email,
-      phone: user.phone ?? user.mobile_number ?? null,
-      token,
-      bio,
-      city: addressDetails.city,
-      country: addressDetails.country,
-      zip: addressDetails.zip,
-      address: this.formatAddress(addressDetails),
-      image: user.image ?? null,
+      phone: user.phone,
+      token: token,
+      bio: user.bio,
+      city: user.city,
+      country: user.country,
+      zip: user.zip,
+      address: user.street,
+      image: user.image,
       password: null,
-      profile: {
-        bio,
-        description,
-        image: user.image ?? null,
-        name: fullName,
-      },
+      profile: this.toSessionProfile(user),
     };
-  }
-
-  private formatAddress(address: {
-    street: string | null;
-    city: string | null;
-    state: string | null;
-    zip: string | null;
-    country: string | null;
-  }): string | null {
-    const lineOne = address.street?.trim();
-    const locality = [address.city, address.state, address.zip].filter(
-      (part) => typeof part === 'string' && part.trim().length > 0,
-    );
-    const parts = [lineOne, locality.length > 0 ? locality.join(', ').replace(', ,', ',') : null, address.country]
-      .filter((part) => typeof part === 'string' && part.trim().length > 0)
-      .map((part) => part!.trim());
-
-    return parts.length > 0 ? parts.join(', ') : null;
-  }
-
-  private toRegisteredUser(user: UserDocument): RegisteredUser {
-    return {
-      id: user._id.toString(),
-      name: `${user.first_name} ${user.last_name}`,
-      full_name: `${user.first_name} ${user.last_name}`,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      phone: user.phone ?? null,
-      email_verified: user.email_verified,
-    };
-  }
-
-  private toLoginUser(user: UserDocument): Omit<LoginResult, 'token' | 'accessToken' | 'refreshToken' | 'tokenType'> {
-    return {
-      id: user._id.toString(),
-      name: `${user.first_name} ${user.last_name}`,
-      full_name: `${user.first_name} ${user.last_name}`,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      email: user.email,
-      phone: user.phone ?? null,
-    };
-  }
-
-  private extractOptionalBearerToken(authorization?: string): string | null {
-    const [scheme, token] = authorization?.split(' ') ?? [];
-    return scheme === 'Bearer' && token ? token : null;
-  }
-
-  private isDuplicateKeyError(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && Reflect.get(error, 'code') === 11000;
   }
 }
