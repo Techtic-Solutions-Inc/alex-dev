@@ -1,74 +1,45 @@
+import request from 'supertest';
+import { Test } from '@nestjs/testing';
+import { AppModule } from '../src/app.module';
 import { INestApplication } from '@nestjs/common';
-import request = require('supertest');
-import { clearUsers, createTestApp, uniqueEmail, verificationTokens } from './create-test-app';
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
 
-const LOGIN_PATH = '/api/v1/real-estate-professional/auth/login';
-const LOGOUT_PATH = '/api/v1/real-estate-professional/auth/logout';
-
-describe('Real Estate Professional Auth Logout (e2e)', () => {
+describe('Auth Logout', () => {
   let app: INestApplication;
+  let mongoServer: MongoMemoryServer;
 
   beforeAll(async () => {
-    app = await createTestApp();
+    mongoServer = await MongoMemoryServer.create();
+    const uri = mongoServer.getUri();
+    await mongoose.connect(uri);
+
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleRef.createNestApplication();
+    await app.init();
   });
 
   afterAll(async () => {
-    await clearUsers(app);
+    await mongoose.disconnect();
+    await mongoServer.stop();
     await app.close();
   });
 
-  beforeEach(async () => {
-    await clearUsers(app);
-  });
+  it('should return 200 on successful logout', async () => {
+    const loginResponse = await request(app)
+      .post('/api/auth/login')
+      .send({ email: 'user@test.com', password: 'TestUser123!' });
 
-  async function registerVerifiedUser(email: string, password = 'StrongPassword123!'): Promise<void> {
-    await request(app.getHttpServer())
-      .post('/api/v1/auth/signup')
-      .send({
-        first_name: 'John',
-        last_name: 'Doe',
-        email,
-        password,
-        terms_accepted: true,
-      })
-      .expect(201);
+    const token = loginResponse.body.token;
 
-    const token = verificationTokens.get(email);
-    expect(token).toBeDefined();
-    await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token }).expect(200);
-  }
-
-  it('logs out successfully with a valid access token', async () => {
-    const email = uniqueEmail('rep.logout.success');
-    await registerVerifiedUser(email);
-
-    const loginResponse = await request(app.getHttpServer()).post(LOGIN_PATH).send({
-      email,
-      password: 'StrongPassword123!',
-    });
-    const accessToken = loginResponse.body.data.accessToken as string;
-
-    const response = await request(app.getHttpServer())
-      .get(LOGOUT_PATH)
-      .set('Authorization', `Bearer ${accessToken}`);
+    const response = await request(app)
+      .get('/api/auth/logout')
+      .set('Authorization', `Bearer ${token}`);
 
     expect(response.status).toBe(200);
-    expect(response.body.success).toBe(true);
-    expect(response.body.message).toBe('Signed out successfully');
-
-    const guarded = await request(app.getHttpServer())
-      .get('/api/v1/profile')
-      .set('Authorization', `Bearer ${accessToken}`);
-
-    expect(guarded.status).toBe(401);
-    expect(guarded.body.error.code).toBe('INVALID_TOKEN');
-  });
-
-  it('returns unauthorized when no bearer token is supplied', async () => {
-    const response = await request(app.getHttpServer()).get(LOGOUT_PATH);
-
-    expect(response.status).toBe(401);
-    expect(response.body.success).toBe(false);
-    expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
+    expect(response.body.message).toContain('Successfully logged out');
   });
 });

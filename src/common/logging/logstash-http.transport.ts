@@ -1,4 +1,4 @@
-import TransportStream from 'winston-transport';
+import TransportStream = require('winston-transport');
 import { LoggingAggregationConfig } from '../../config/logging.config';
 
 interface LogstashHttpTransportOptions extends TransportStream.TransportStreamOptions {
