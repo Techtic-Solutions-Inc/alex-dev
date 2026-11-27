@@ -2,6 +2,9 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpException } from '../../common/exceptions/http.exception';
+import { buildTextSearchFilter, escapeRegexForFilter, mergeMongoFilters } from '../../common/utils/filtering.helper';
+import { buildPaginatedResult, normalizePaginationQuery, PaginationMeta } from '../../common/utils/pagination.helper';
+import { ContentLibraryDedicatedSearchQueryDto } from './dto/content-library-search.dto';
 import {
   ContentLibraryItemResponseDto,
   ContentLibraryListDataDto,
@@ -29,6 +32,46 @@ export class ContentLibraryService {
     const data = await this.queryItems(userId, query);
     void this.contentLibraryAnalyticsService.trackEvent(userId, 'content_library_searched', undefined, query.q?.trim());
     return data;
+  }
+
+  async searchPublicLibraryItems(query: ContentLibraryDedicatedSearchQueryDto): Promise<ContentLibraryListDataDto> {
+    this.assertNonEmptySearchQuery(query.query);
+
+    const { page, limit, skip } = normalizePaginationQuery(
+      { page: query.page, limit: query.limit },
+      { defaultLimit: 20 },
+    );
+    const filter = this.buildPublicSearchFilter(query);
+
+    const [items, total] = await Promise.all([
+      this.contentLibraryItemModel
+        .find(filter)
+        .sort({ updatedAt: -1, createdAt: -1, _id: -1 })
+        .skip(skip)
+        .limit(limit)
+        .exec(),
+      this.contentLibraryItemModel.countDocuments(filter).exec(),
+    ]);
+
+    if (total === 0) {
+      throw new HttpException(
+        'No content library items matched the search query',
+        HttpStatus.NOT_FOUND,
+        'CONTENT_LIBRARY_SEARCH_NO_RESULTS',
+      );
+    }
+
+    const paginated = buildPaginatedResult(
+      items.map((item) => this.toResponse(item)),
+      total,
+      page,
+      limit,
+    );
+
+    return {
+      items: paginated.items,
+      pagination: this.toContentLibraryPagination(paginated.pagination),
+    };
   }
 
   async createItem(userId: string, dto: CreateContentLibraryItemDto): Promise<ContentLibraryItemResponseDto> {
@@ -148,27 +191,65 @@ export class ContentLibraryService {
     };
   }
 
+  private assertNonEmptySearchQuery(searchQuery: string | undefined): void {
+    if (searchQuery === undefined || searchQuery.trim().length === 0) {
+      throw new HttpException('Search query cannot be empty', HttpStatus.BAD_REQUEST, 'EMPTY_SEARCH_QUERY', {
+        query: ['Search query cannot be empty'],
+      });
+    }
+  }
+
+  private buildPublicSearchFilter(query: ContentLibraryDedicatedSearchQueryDto): Record<string, unknown> {
+    const parts: Record<string, unknown>[] = [
+      { is_active: true },
+      buildTextSearchFilter(query.query, ['title', 'description', 'category', 'tags', 'full_name', 'phone']),
+    ];
+
+    const fullName = query.full_name?.trim();
+    if (fullName) {
+      parts.push({ full_name: this.caseInsensitiveContainsRegex(fullName) });
+    }
+
+    const phone = query.phone?.trim();
+    if (phone) {
+      parts.push({ phone: this.caseInsensitiveContainsRegex(phone) });
+    }
+
+    return mergeMongoFilters(...parts);
+  }
+
   private buildFilter(userId: string, query: ContentLibrarySearchQueryDto): Record<string, unknown> {
-    const filter: Record<string, unknown> = {
-      user_id: this.toObjectId(userId),
-      is_active: true,
-    };
+    const parts: Record<string, unknown>[] = [
+      {
+        user_id: this.toObjectId(userId),
+        is_active: true,
+      },
+    ];
 
     if (query.category) {
-      filter.category = { $regex: this.escapeRegex(query.category.trim()), $options: 'i' };
+      parts.push({ category: this.caseInsensitiveContainsRegex(query.category.trim()) });
     }
 
     if (query.q) {
-      const searchRegex = new RegExp(this.escapeRegex(query.q.trim()), 'i');
-      filter.$or = [
-        { title: searchRegex },
-        { description: searchRegex },
-        { category: searchRegex },
-        { tags: searchRegex },
-      ];
+      parts.push(buildTextSearchFilter(query.q, ['title', 'description', 'category', 'tags']));
     }
 
-    return filter;
+    return mergeMongoFilters(...parts);
+  }
+
+  private caseInsensitiveContainsRegex(term: string): { $regex: string; $options: 'i' } {
+    return { $regex: escapeRegexForFilter(term), $options: 'i' };
+  }
+
+  private toContentLibraryPagination(pagination: PaginationMeta): ContentLibraryListDataDto['pagination'] {
+    return {
+      page: pagination.page,
+      limit: pagination.limit,
+      total: pagination.total,
+      total_pages: pagination.total_pages,
+      has_next_page: pagination.has_next,
+      has_previous_page: pagination.has_previous,
+    };
   }
 
   private async ensureNoDuplicate(userId: string, title: string, category: string, excludedId?: string): Promise<void> {
@@ -257,10 +338,6 @@ export class ContentLibraryService {
 
   private normalizeTags(tags: string[]): string[] {
     return [...new Set(tags.map((tag) => tag.trim()).filter((tag) => tag.length > 0))];
-  }
-
-  private escapeRegex(value: string): string {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   private isDuplicateKeyError(error: unknown): boolean {
