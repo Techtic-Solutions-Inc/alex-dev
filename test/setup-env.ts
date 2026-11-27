@@ -1,37 +1,24 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose from 'mongoose';
-import { Test, TestingModule } from '@nestjs/testing';
-import { AppModule } from '../src/app.module';
-import * as request from 'supertest';
+/**
+ * Runs before each e2e test file (Jest setupFiles).
+ * DATABASE_URL is injected by test/global-setup.ts via mongodb-memory-server.
+ */
+process.env.NODE_ENV = 'test';
+process.env.LOG_LEVEL = process.env.LOG_LEVEL ?? 'error';
+process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'test-jwt-secret-at-least-32-characters-long-for-ci';
+process.env.JWT_EXPIRY = process.env.JWT_EXPIRY ?? '3600';
+process.env.JWT_REFRESH_EXPIRY = process.env.JWT_REFRESH_EXPIRY ?? '86400';
+process.env.EMAIL_VERIFICATION_URL =
+  process.env.EMAIL_VERIFICATION_URL ?? 'http://localhost:3000/api/v1/auth/verify-email';
+process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS = process.env.EMAIL_VERIFICATION_TOKEN_EXPIRY_HOURS ?? '24';
+process.env.RATE_LIMIT_POINTS = process.env.RATE_LIMIT_POINTS ?? '100000';
+process.env.RATE_LIMIT_DURATION = process.env.RATE_LIMIT_DURATION ?? '1';
+process.env.CORS_ORIGIN = process.env.CORS_ORIGIN ?? 'http://localhost:3000';
+process.env.AUTH0_DOMAIN = process.env.AUTH0_DOMAIN ?? '';
+process.env.AUTH0_CLIENT_ID = process.env.AUTH0_CLIENT_ID ?? '';
+process.env.AUTH0_CLIENT_SECRET = process.env.AUTH0_CLIENT_SECRET ?? '';
 
-let mongoServer: MongoMemoryServer;
-
-beforeAll(async () => {
-  mongoServer = await MongoMemoryServer.create();
-  const uri = mongoServer.getUri();
-  await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-});
-
-afterAll(async () => {
-  await mongoose.disconnect();
-  await mongoServer.stop();
-});
-
-export const createApp = async (): Promise<INestApplication> => {
-  const moduleFixture: TestingModule = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
-
-  const app = moduleFixture.createNestApplication();
-  await app.init();
-  return app;
-};
-
-export const createTestUser = async (role: string) => {
-  const user = await UserModel.create({
-    email: `${role}@test.com`,
-    password: 'TestPassword123!',
-    role,
-  });
-  return user;
-};
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is not set. Ensure jest e2e project uses test/global-setup.ts (mongodb-memory-server).',
+  );
+}

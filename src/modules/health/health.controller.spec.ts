@@ -33,7 +33,7 @@ describe('HealthController', () => {
       resolveSession: jest.fn().mockResolvedValue(emptySession),
     };
     healthService = {
-      assertDatabaseReady: jest.fn(),
+      assertDatabaseReady: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({

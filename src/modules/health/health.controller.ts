@@ -53,7 +53,7 @@ export class HealthController {
   @ApiResponse({ status: 503, description: 'Database is unavailable.', type: ApiErrorResponseDto })
   @ApiResponse({ status: 500, description: 'Unexpected server error', type: ApiErrorResponseDto })
   async check(@Headers('authorization') authorization?: string): Promise<{ message: string; data: SessionBootstrap }> {
-    this.healthService.assertDatabaseReady();
+    await this.healthService.assertDatabaseReady();
     return {
       message: 'API is healthy',
       data: await this.authService.resolveSession(authorization),

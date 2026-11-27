@@ -97,7 +97,8 @@ export class ContentLibraryController {
               id: '66df0b7814b3e891e4ebcd21',
               title: 'Luxury Listing Social Template',
               link: 'https://example.com/content-library/luxury-listing-template',
-              description: 'Editable social post template designed for luxury property launches and premium brand campaigns.',
+              description:
+                'Editable social post template designed for luxury property launches and premium brand campaigns.',
               image: 'https://cdn.example.com/content-library/luxury-listing-template.jpg',
               image_url: 'https://cdn.example.com/content-library/luxury-listing-template.jpg',
               category: 'Social Media',

@@ -1,38 +1,41 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { DatabaseModule } from '../src/database/database.module';
-import { HealthModule } from '../src/modules/health/health.module';
-import { getConnection } from 'typeorm';
+import request = require('supertest');
+import { createTestApp } from './create-test-app';
 
-describe('App E2E', () => {
+describe('Health endpoint (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const moduleFixture: TestingModule = await Test.createTestingModule({
-      imports: [AppModule, DatabaseModule, HealthModule],
-    }).compile();
-
-    app = moduleFixture.createNestApplication();
-    await app.init();
+    app = await createTestApp();
   });
 
   afterAll(async () => {
-    await getConnection().close();
     await app.close();
   });
 
-  it('should return health status', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/health')
-      .expect(200)
-      .expect({ status: 'UP' });
-  });
+  it('GET /api/v1/health returns an UP status and frontend session bootstrap fields', async () => {
+    const response = await request(app.getHttpServer()).get('/api/v1/health').expect(200);
 
-  it('should return 404 for non-existent route', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/non-existent')
-      .expect(404);
+    expect(response.body.success).toBe(true);
+    expect(response.body.message).toBe('API is healthy');
+    expect(response.body.data).toEqual({
+      status: 'UP',
+      id: null,
+      name: null,
+      full_name: null,
+      first_name: null,
+      last_name: null,
+      email: null,
+      phone: null,
+      token: null,
+      bio: null,
+      city: null,
+      country: null,
+      zip: null,
+      address: null,
+      image: null,
+      password: null,
+      profile: null,
+    });
   });
 });

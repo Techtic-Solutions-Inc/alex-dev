@@ -124,7 +124,9 @@ describe('Profile Content Generated API (e2e)', () => {
     });
 
     const connection = app.get<Connection>(getConnectionToken());
-    const contentCount = await connection.collection('profile_contents').countDocuments({ user_id: new Types.ObjectId(userId) });
+    const contentCount = await connection
+      .collection('profile_contents')
+      .countDocuments({ user_id: new Types.ObjectId(userId) });
     expect(contentCount).toBe(1);
 
     const user = await connection.collection('users').findOne<{ ai_credits_used: number }>({
