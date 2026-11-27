@@ -6,7 +6,10 @@ import { ValidationError } from 'class-validator';
 import { Connection } from 'mongoose';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
+import { applySecurityHeaders } from '../src/common/helpers/security-headers.bootstrap';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
+import { registerPrometheusMetricsRoute } from '../src/common/apm/register-metrics-route';
+import { resolveSecuritySettings } from '../src/config/security.config';
 import { EmailVerificationService } from '../src/modules/auth/email-verification.service';
 import { ensureMongoMemoryUri } from './mongodb-memory';
 
@@ -59,6 +62,20 @@ export async function createTestApp(): Promise<INestApplication> {
   app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
   await app.init();
+
+  const securitySettings = resolveSecuritySettings({
+    NODE_ENV: process.env.NODE_ENV,
+    TRUST_PROXY: process.env.TRUST_PROXY,
+    FORCE_HTTPS: process.env.FORCE_HTTPS,
+    SECURITY_HSTS_ENABLED: process.env.SECURITY_HSTS_ENABLED,
+    SECURITY_HSTS_MAX_AGE_SECONDS: process.env.SECURITY_HSTS_MAX_AGE_SECONDS,
+  });
+  const expressInstance = app.getHttpAdapter().getInstance();
+  if (securitySettings.trustProxy) {
+    expressInstance.set('trust proxy', 1);
+  }
+  applySecurityHeaders(app, securitySettings);
+  registerPrometheusMetricsRoute(app);
 
   const connection = app.get<Connection>(getConnectionToken());
   if (connection.readyState !== 1) {

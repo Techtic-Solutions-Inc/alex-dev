@@ -1,0 +1,32 @@
+{
+  "index_patterns": ["backend-api-logs*", "backend-api-*"],
+  "template": {
+    "settings": {
+      "index.number_of_shards": 1,
+      "index.number_of_replicas": 1
+    },
+    "mappings": {
+      "dynamic": true,
+      "properties": {
+        "@timestamp": { "type": "date" },
+        "level": { "type": "keyword" },
+        "message": { "type": "text", "fields": { "keyword": { "type": "keyword", "ignore_above": 256 } } },
+        "environment": { "type": "keyword" },
+        "service.name": { "type": "keyword" },
+        "service.version": { "type": "keyword" },
+        "trace.request_id": { "type": "keyword" },
+        "http.method": { "type": "keyword" },
+        "http.path": { "type": "keyword" },
+        "http.status_code": { "type": "integer" },
+        "http.duration_ms": { "type": "float" },
+        "requestId": { "type": "keyword" },
+        "event.category": { "type": "keyword" },
+        "event.type": { "type": "keyword" }
+      }
+    }
+  },
+  "priority": 200,
+  "_meta": {
+    "description": "Structured backend-api access and application logs"
+  }
+}

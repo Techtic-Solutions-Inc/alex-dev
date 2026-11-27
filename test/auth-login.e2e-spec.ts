@@ -57,6 +57,8 @@ describe('Auth Login & Session (e2e)', () => {
       last_name: 'Doe',
       email,
       phone: null,
+      description: null,
+      link: null,
       token: expect.any(String),
       accessToken: expect.any(String),
       refreshToken: expect.any(String),

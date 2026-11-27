@@ -2,6 +2,7 @@ import { ConfigModule } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ApmService } from './apm.service';
 import { EventLoopMonitorService } from './event-loop-monitor.service';
+import { PrometheusMetricsService } from './prometheus-metrics.service';
 
 describe('ApmService', () => {
   let service: ApmService;
@@ -11,7 +12,7 @@ describe('ApmService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       imports: [ConfigModule.forRoot({ isGlobal: true })],
-      providers: [EventLoopMonitorService, ApmService],
+      providers: [EventLoopMonitorService, PrometheusMetricsService, ApmService],
     }).compile();
 
     await module.init();
@@ -46,8 +47,9 @@ describe('ApmService', () => {
 
   it('flags slow requests via logging path without external exporter', () => {
     process.env.APM_SLOW_REQUEST_THRESHOLD_MS = '5';
+    process.env.METRICS_ENABLED = 'true';
     const monitor = new EventLoopMonitorService();
-    const slowService = new ApmService(monitor);
+    const slowService = new ApmService(monitor, new PrometheusMetricsService());
     expect(() =>
       slowService.recordHttpRequest({
         method: 'GET',

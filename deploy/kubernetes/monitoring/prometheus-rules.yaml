@@ -1,0 +1,63 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: backend-api-alerts
+  labels:
+    app.kubernetes.io/name: backend-api
+    app.kubernetes.io/part-of: agentwise
+    role: alert-rules
+spec:
+  groups:
+    - name: backend-api.rules
+      interval: 30s
+      rules:
+        - alert: BackendApiHighErrorRate
+          expr: |
+            (
+              sum(rate(backend_api_http_server_errors_total[5m]))
+              /
+              clamp_min(sum(rate(backend_api_http_requests_total[5m])), 0.001)
+            ) > 0.05
+          for: 10m
+          labels:
+            severity: critical
+            service: backend-api
+          annotations:
+            summary: Backend API elevated 5xx error rate
+            description: More than 5% of HTTP requests returned 5xx over the last 10 minutes.
+        - alert: BackendApiSlowRequestBursts
+          expr: increase(backend_api_http_slow_requests_total[5m]) > 20
+          for: 5m
+          labels:
+            severity: warning
+            service: backend-api
+          annotations:
+            summary: Backend API slow request threshold exceeded frequently
+            description: Slow request counter increased more than 20 times in five minutes.
+        - alert: BackendApiHighEventLoopLag
+          expr: backend_api_event_loop_delay_ms > 100
+          for: 5m
+          labels:
+            severity: warning
+            service: backend-api
+          annotations:
+            summary: Backend API event-loop lag is elevated
+            description: Mean event-loop delay stayed above 100ms for five minutes.
+        - alert: BackendApiHighMemoryUsage
+          expr: backend_api_process_resident_memory_bytes > 600000000
+          for: 15m
+          labels:
+            severity: warning
+            service: backend-api
+          annotations:
+            summary: Backend API RSS memory above threshold
+            description: Process resident memory exceeded 600MB for fifteen minutes.
+        - alert: BackendApiMetricsAbsent
+          expr: absent(backend_api_process_uptime_seconds)
+          for: 10m
+          labels:
+            severity: critical
+            service: backend-api
+          annotations:
+            summary: Backend API metrics are not being scraped
+            description: Prometheus has not received backend_api_process_uptime_seconds for ten minutes.

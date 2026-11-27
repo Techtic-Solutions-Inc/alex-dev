@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { AuthModule } from '../auth/auth.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
 import { ProfileController } from './profile.controller';
@@ -19,6 +18,6 @@ import { ProfileService } from './profile.service';
     ]),
   ],
   controllers: [ProfileController],
-  providers: [ProfileService, ProfileContentAnalyticsService, JwtAuthGuard],
+  providers: [ProfileService, ProfileContentAnalyticsService],
 })
 export class ProfileModule {}

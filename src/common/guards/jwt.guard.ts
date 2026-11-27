@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { HttpException } from '../exceptions/http.exception';
 import { TokenPayload } from '../utils/token.util';
+import { SessionRevocationService } from '../../modules/auth/session-revocation.service';
 
 export interface AuthenticatedRequest extends Request {
   user: TokenPayload;
@@ -10,15 +11,21 @@ export interface AuthenticatedRequest extends Request {
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly sessionRevocationService: SessionRevocationService,
+  ) {}
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const token = this.extractBearerToken(request);
 
     try {
       request.user = this.jwtService.verify<TokenPayload>(token);
       if (request.user.tokenUse === 'refresh') {
+        throw new HttpException('Authentication token is invalid or expired', 401, 'INVALID_TOKEN');
+      }
+      if (await this.sessionRevocationService.isAccessTokenRevoked(token)) {
         throw new HttpException('Authentication token is invalid or expired', 401, 'INVALID_TOKEN');
       }
       return true;

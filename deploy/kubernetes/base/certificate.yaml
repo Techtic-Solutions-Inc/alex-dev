@@ -1,0 +1,13 @@
+# Issues a Let's Encrypt certificate and stores it in the secret referenced by the Ingress TLS block.
+# Requires cert-manager with a ClusterIssuer named letsencrypt-prod (production overlay) or letsencrypt-staging (dev).
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: backend-api-tls
+spec:
+  secretName: backend-api-tls
+  dnsNames:
+    - api.example.com
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer

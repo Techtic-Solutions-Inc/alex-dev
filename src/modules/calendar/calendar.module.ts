@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { AuthModule } from '../auth/auth.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
 import { CalendarAnalyticsService } from './calendar-analytics.service';
@@ -17,7 +16,7 @@ import { ContentCalendarEntry, ContentCalendarEntrySchema } from './entities/con
     ]),
   ],
   controllers: [CalendarController],
-  providers: [CalendarService, CalendarAnalyticsService, JwtAuthGuard],
+  providers: [CalendarService, CalendarAnalyticsService],
   exports: [CalendarService],
 })
 export class CalendarModule {}

@@ -2,7 +2,9 @@ import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { ApmModule } from './common/apm/apm.module';
+import { HttpsRedirectMiddleware } from './common/middleware/https-redirect.middleware';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { RequestContextMiddleware } from './common/middleware/request-context.middleware';
 import { RateLimiterMiddleware } from './common/middleware/rate-limiter.middleware';
 import { applyEnvDefaults } from './config/env.defaults';
 import { requireMongoDatabaseName } from './config/database-url.util';
@@ -52,10 +54,12 @@ import { VisitorModule } from './modules/visitor/visitor.module';
     RealEstateProfessionalModule,
     VisitorModule,
   ],
-  providers: [RateLimiterMiddleware],
+  providers: [HttpsRedirectMiddleware, RequestContextMiddleware, RateLimiterMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(LoggerMiddleware, RateLimiterMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestContextMiddleware, HttpsRedirectMiddleware, LoggerMiddleware, RateLimiterMiddleware)
+      .forRoutes('*');
   }
 }

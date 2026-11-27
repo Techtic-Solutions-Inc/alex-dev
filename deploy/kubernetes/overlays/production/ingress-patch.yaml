@@ -4,6 +4,8 @@ metadata:
   name: backend-api
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/hsts-preload: "true"
 spec:
   rules:
     - host: api.example.com
