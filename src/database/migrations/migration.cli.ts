@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { initialSchemaMigration } from './001-initial-schema.migration';
 import { MigrationError, MigrationRunner } from './migration-runner';
+import { migrationRegistry } from './migration.registry';
 
 type MigrationCommand = 'up' | 'down' | 'status';
 
@@ -42,7 +42,7 @@ async function main(): Promise<void> {
       throw new Error('Unable to establish a database connection for migrations.');
     }
 
-    const runner = new MigrationRunner(connection.db, [initialSchemaMigration], {
+    const runner = new MigrationRunner(connection.db, migrationRegistry, {
       owner: process.env.MIGRATION_RUNNER_ID,
     });
 

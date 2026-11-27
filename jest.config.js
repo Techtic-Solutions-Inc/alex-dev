@@ -20,13 +20,7 @@ module.exports = {
       moduleFileExtensions: ['js', 'json', 'ts'],
       rootDir: '.',
       testRegex: '.*\\.e2e-spec\\.ts$',
-      globalSetup: '<rootDir>/test/global-setup.ts',
-      globalTeardown: '<rootDir>/test/global-teardown.ts',
-      setupFiles: [
-        '<rootDir>/test/jest-common-setup.ts',
-        '<rootDir>/test/setup-env-after-global.ts',
-        '<rootDir>/test/setup-env.ts',
-      ],
+      setupFiles: ['<rootDir>/test/jest-common-setup.ts', '<rootDir>/test/setup-env.ts'],
       testPathIgnorePatterns: ['/node_modules/', '/dist/'],
       transform: {
         '^.+\\.(t|j)s$': 'ts-jest',

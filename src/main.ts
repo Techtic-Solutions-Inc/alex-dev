@@ -1,3 +1,4 @@
+import './common/apm/apm.bootstrap';
 import { BadRequestException, HttpStatus, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -39,7 +40,9 @@ const registerMongoConnectionGuards = (): void => {
 };
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { ApmInterceptor } from './common/interceptors/apm.interceptor';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
+import { ApmService } from './common/apm/apm.service';
 
 const validationDetails = (errors: ValidationError[]): Record<string, string[]> =>
   errors.reduce<Record<string, string[]>>((details, error) => {
@@ -92,7 +95,10 @@ async function bootstrap(): Promise<void> {
     }),
   );
   app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
-  app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
+  app.useGlobalInterceptors(
+    new ResponseEnvelopeInterceptor(app.get(Reflector)),
+    new ApmInterceptor(app.get(ApmService)),
+  );
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('Backend API')

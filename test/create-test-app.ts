@@ -4,11 +4,11 @@ import { getConnectionToken } from '@nestjs/mongoose';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ValidationError } from 'class-validator';
 import { Connection } from 'mongoose';
-import { AppModule } from '../src/app.module';
 import { HttpExceptionFilter } from '../src/common/filters/http-exception.filter';
 import { GlobalExceptionFilter } from '../src/common/filters/global-exception.filter';
 import { ResponseEnvelopeInterceptor } from '../src/common/interceptors/response-envelope.interceptor';
 import { EmailVerificationService } from '../src/modules/auth/email-verification.service';
+import { ensureMongoMemoryUri } from './mongodb-memory';
 
 export const verificationTokens = new Map<string, string>();
 
@@ -26,6 +26,9 @@ const validationDetails = (errors: ValidationError[]): Record<string, string[]> 
 
 export async function createTestApp(): Promise<INestApplication> {
   verificationTokens.clear();
+  await ensureMongoMemoryUri();
+
+  const { AppModule } = await import('../src/app.module');
 
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
@@ -56,6 +59,12 @@ export async function createTestApp(): Promise<INestApplication> {
   app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
   await app.init();
+
+  const connection = app.get<Connection>(getConnectionToken());
+  if (connection.readyState !== 1) {
+    await connection.asPromise();
+  }
+
   return app;
 }
 

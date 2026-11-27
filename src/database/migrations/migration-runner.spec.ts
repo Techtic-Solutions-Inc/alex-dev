@@ -1,5 +1,6 @@
 import { mongo } from 'mongoose';
 import { initialSchemaMigration } from './001-initial-schema.migration';
+import { domainCollectionsMigration } from './002-domain-collections.migration';
 import { Migration } from './migration.interface';
 import { MigrationError, MigrationRunner } from './migration-runner';
 
@@ -176,6 +177,46 @@ describe('MigrationRunner', () => {
     expect(database.collection('users').indexes).not.toContain('uniq_users_email');
     expect(database.collection('users').indexes).not.toContain('verification_token_hash_1');
     expect(database.collection('app_settings').documents.get('schema_version')).toBeUndefined();
+  });
+
+  it('creates and rolls back domain collection indexes idempotently', async () => {
+    const database = new FakeDatabase();
+    const runner = new MigrationRunner(asDatabase(database), [domainCollectionsMigration]);
+
+    await runner.up();
+    expect(database.collection('content_library_items').indexes).toContain(
+      'uniq_active_content_library_title_category_per_user',
+    );
+    expect(database.collection('content_calendar_entries').indexes).toContain(
+      'uniq_active_calendar_title_date_per_user',
+    );
+    expect(database.collection('dashboard_announcements').indexes).toContain(
+      'uniq_dashboard_announcement_title_per_user',
+    );
+
+    await runner.down();
+    expect(database.collection('content_library_items').indexes).not.toContain(
+      'uniq_active_content_library_title_category_per_user',
+    );
+    expect(database.collection('content_calendar_entries').indexes).not.toContain(
+      'uniq_active_calendar_title_date_per_user',
+    );
+  });
+
+  it('applies the full registry in order through a single runner', async () => {
+    const database = new FakeDatabase();
+    const runner = new MigrationRunner(asDatabase(database), [initialSchemaMigration, domainCollectionsMigration]);
+
+    const firstRun = await runner.up();
+    expect(firstRun.applied).toEqual(['001-initial-schema', '002-domain-collections']);
+    expect(await runner.status()).toEqual([
+      expect.objectContaining({ id: '001-initial-schema', status: 'applied' }),
+      expect.objectContaining({ id: '002-domain-collections', status: 'applied' }),
+    ]);
+
+    const secondRun = await runner.up();
+    expect(secondRun.applied).toEqual([]);
+    expect(secondRun.skipped).toEqual(['001-initial-schema', '002-domain-collections']);
   });
 
   it('rejects a changed migration checksum', async () => {
