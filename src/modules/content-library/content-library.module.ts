@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
 import { ContentLibraryAnalyticsService } from './content-library-analytics.service';
 import { ContentLibraryController } from './content-library.controller';
+import { ContentLibrarySearchController } from './content-library.search.controller';
 import { ContentLibraryService } from './content-library.service';
 import { ContentLibraryItem, ContentLibraryItemSchema } from './entities/content-library-item.schema';
 
@@ -16,7 +17,7 @@ import { ContentLibraryItem, ContentLibraryItemSchema } from './entities/content
       { name: ContentLibraryItem.name, schema: ContentLibraryItemSchema },
     ]),
   ],
-  controllers: [ContentLibraryController],
+  controllers: [ContentLibraryController, ContentLibrarySearchController],
   providers: [ContentLibraryService, ContentLibraryAnalyticsService, RolesGuard],
   exports: [ContentLibraryService],
 })
