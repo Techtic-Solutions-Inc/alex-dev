@@ -44,16 +44,16 @@ describe('Content Library Search API (e2e)', () => {
   });
 
   it('should return 400 error for an empty search query', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/api/content-library/search')
-      .query({ query: '' });
+    const response = await request(app.getHttpServer()).get('/api/content-library/search').query({ query: '' });
 
     expect(response.status).toBe(400);
     expect(response.body.message).toBe('Search query cannot be empty');
   });
 
   it('should return 404 error when no content items match the search query', async () => {
-    jest.spyOn(service, 'searchPublicLibraryItems').mockRejectedValueOnce(new NotFoundException('No content library items matched the search query'));
+    jest
+      .spyOn(service, 'searchPublicLibraryItems')
+      .mockRejectedValueOnce(new NotFoundException('No content library items matched the search query'));
 
     const response = await request(app.getHttpServer())
       .get('/api/content-library/search')
@@ -64,9 +64,7 @@ describe('Content Library Search API (e2e)', () => {
   });
 
   it('should return 401 error for missing token', async () => {
-    const response = await request(app.getHttpServer())
-      .get('/api/content-library/search')
-      .query({ query: 'luxury' });
+    const response = await request(app.getHttpServer()).get('/api/content-library/search').query({ query: 'luxury' });
 
     expect(response.status).toBe(401);
     expect(response.body.message).toBe('Unauthorized');

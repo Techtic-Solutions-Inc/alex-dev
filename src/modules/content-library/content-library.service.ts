@@ -2,16 +2,8 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { HttpException } from '../../common/exceptions/http.exception';
-import {
-  buildTextSearchFilter,
-  escapeRegexForFilter,
-  mergeMongoFilters,
-} from '../../common/utils/filtering.helper';
-import {
-  buildPaginatedResult,
-  normalizePaginationQuery,
-  PaginationMeta,
-} from '../../common/utils/pagination.helper';
+import { buildTextSearchFilter, escapeRegexForFilter, mergeMongoFilters } from '../../common/utils/filtering.helper';
+import { buildPaginatedResult, normalizePaginationQuery, PaginationMeta } from '../../common/utils/pagination.helper';
 import { ContentLibraryDedicatedSearchQueryDto } from './dto/content-library-search.dto';
 import {
   ContentLibraryItemResponseDto,

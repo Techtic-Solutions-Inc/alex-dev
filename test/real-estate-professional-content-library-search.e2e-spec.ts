@@ -126,7 +126,11 @@ interface ContentLibrarySeedItem {
   phone: string;
 }
 
-async function seedContentItem(app: INestApplication, ownerUserId: string, item: ContentLibrarySeedItem): Promise<void> {
+async function seedContentItem(
+  app: INestApplication,
+  ownerUserId: string,
+  item: ContentLibrarySeedItem,
+): Promise<void> {
   const connection = app.get<Connection>(getConnectionToken());
   await connection.collection('content_library_items').insertOne({
     user_id: new Types.ObjectId(ownerUserId),

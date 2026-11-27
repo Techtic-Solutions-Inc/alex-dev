@@ -81,11 +81,7 @@ describe('ContentLibrarySearchController', () => {
   it('test_search_no_results', async () => {
     const { HttpException } = await import('../../common/exceptions/http.exception');
     service.searchPublicLibraryItems.mockRejectedValue(
-      new HttpException(
-        'No content library items matched the search query',
-        404,
-        'CONTENT_LIBRARY_SEARCH_NO_RESULTS',
-      ),
+      new HttpException('No content library items matched the search query', 404, 'CONTENT_LIBRARY_SEARCH_NO_RESULTS'),
     );
 
     await expect(controller.searchContentLibrary({ query: 'no-such-content' })).rejects.toMatchObject({
