@@ -24,10 +24,7 @@ describe('filtering.helper', () => {
   });
 
   it('ignores fields outside the allow-list', () => {
-    const filter = buildMongoFilter(
-      [{ field: 'role', operator: 'eq', value: 'admin' }],
-      { allowedFields: ['status'] },
-    );
+    const filter = buildMongoFilter([{ field: 'role', operator: 'eq', value: 'admin' }], { allowedFields: ['status'] });
     expect(filter).toEqual({});
   });
 
@@ -63,10 +60,9 @@ describe('filtering.helper', () => {
   });
 
   it('composes in-memory predicates', () => {
-    const predicates = buildInMemoryPredicates(
-      [{ field: 'status', operator: 'eq', value: 'active' }],
-      { allowedFields: ['status'] },
-    );
+    const predicates = buildInMemoryPredicates([{ field: 'status', operator: 'eq', value: 'active' }], {
+      allowedFields: ['status'],
+    });
     expect(predicates[0]({ status: 'active' })).toBe(true);
     expect(predicates[0]({ status: 'draft' })).toBe(false);
   });

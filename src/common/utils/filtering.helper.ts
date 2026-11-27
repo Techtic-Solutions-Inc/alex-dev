@@ -1,14 +1,4 @@
-export type FilterOperator =
-  | 'eq'
-  | 'ne'
-  | 'in'
-  | 'nin'
-  | 'gt'
-  | 'gte'
-  | 'lt'
-  | 'lte'
-  | 'regex'
-  | 'exists';
+export type FilterOperator = 'eq' | 'ne' | 'in' | 'nin' | 'gt' | 'gte' | 'lt' | 'lte' | 'regex' | 'exists';
 
 /**
  * One filter condition applied to a single field.
@@ -184,7 +174,9 @@ function evaluateCriterion(fieldValue: unknown, criterion: FilterCriterion): boo
         ? criterion.value.test(fieldValue)
         : false;
     case 'exists':
-      return criterion.value ? fieldValue !== undefined && fieldValue !== null : fieldValue === undefined || fieldValue === null;
+      return criterion.value
+        ? fieldValue !== undefined && fieldValue !== null
+        : fieldValue === undefined || fieldValue === null;
     default:
       return true;
   }

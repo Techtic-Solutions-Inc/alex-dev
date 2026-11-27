@@ -39,13 +39,18 @@ export class VisitorSignupUserDto {
   })
   link!: string | null;
 
-  @ApiProperty({ description: 'Compatibility error slot; null on success.', example: null, nullable: true })
-  error!: null;
+  @ApiPropertyOptional({
+    description: 'Compatibility error slot; null on success.',
+    type: String,
+    nullable: true,
+    example: null,
+  })
+  error?: string | null;
 }
 
 export class VisitorSignupResponseDto {
   @ApiProperty({ example: true })
-  success!: true;
+  success!: boolean;
 
   @ApiProperty({ example: 'Account created. Please check your email to verify your address.' })
   message!: string;

@@ -17,11 +17,7 @@ export class BlogDetailAccessGuard implements CanActivate {
     const token = this.extractBearerToken(request);
 
     if (!token) {
-      throw new HttpException(
-        'You are not authorized to view this blog post',
-        403,
-        'BLOG_ACCESS_FORBIDDEN',
-      );
+      throw new HttpException('You are not authorized to view this blog post', 403, 'BLOG_ACCESS_FORBIDDEN');
     }
 
     try {
@@ -32,11 +28,7 @@ export class BlogDetailAccessGuard implements CanActivate {
       request.user = payload;
       return true;
     } catch {
-      throw new HttpException(
-        'You are not authorized to view this blog post',
-        403,
-        'BLOG_ACCESS_FORBIDDEN',
-      );
+      throw new HttpException('You are not authorized to view this blog post', 403, 'BLOG_ACCESS_FORBIDDEN');
     }
   }
 

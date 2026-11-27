@@ -6,9 +6,7 @@ export function requireMongoDatabaseName(databaseUrl: string): string {
   const dbName = match?.[1]?.trim();
 
   if (!dbName) {
-    throw new Error(
-      'DATABASE_URL must include a database name (for example mongodb://localhost:27017/alex-dev).',
-    );
+    throw new Error('DATABASE_URL must include a database name (for example mongodb://localhost:27017/alex-dev).');
   }
 
   return dbName;

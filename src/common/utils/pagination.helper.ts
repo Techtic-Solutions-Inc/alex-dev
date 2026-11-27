@@ -117,12 +117,7 @@ export function buildPaginationMeta(page: number, limit: number, total: number):
 /**
  * Wraps a page of items with {@link PaginationMeta} in the standard list format.
  */
-export function buildPaginatedResult<T>(
-  items: T[],
-  total: number,
-  page: number,
-  limit: number,
-): PaginatedResult<T> {
+export function buildPaginatedResult<T>(items: T[], total: number, page: number, limit: number): PaginatedResult<T> {
   return {
     items,
     pagination: buildPaginationMeta(page, limit, total),

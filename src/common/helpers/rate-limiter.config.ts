@@ -33,7 +33,8 @@ export function parseRateLimiterConfig(configService: ConfigService): RateLimite
 
   return {
     points: Number.isInteger(points) && points > 0 ? points : DEFAULT_POINTS,
-    durationSeconds: Number.isInteger(durationSeconds) && durationSeconds > 0 ? durationSeconds : DEFAULT_DURATION_SECONDS,
+    durationSeconds:
+      Number.isInteger(durationSeconds) && durationSeconds > 0 ? durationSeconds : DEFAULT_DURATION_SECONDS,
     strategy: strategyRaw === 'sliding' ? 'sliding' : 'fixed',
   };
 }

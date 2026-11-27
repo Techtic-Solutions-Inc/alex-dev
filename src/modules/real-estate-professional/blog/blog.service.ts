@@ -88,11 +88,7 @@ export class RealEstateProfessionalBlogService {
     }
   }
 
-  async updatePost(
-    userId: string,
-    postId: string,
-    dto: UpdateBlogPostDto,
-  ): Promise<BlogPostDetailDto> {
+  async updatePost(userId: string, postId: string, dto: UpdateBlogPostDto): Promise<BlogPostDetailDto> {
     const post = await this.findOwnedActivePost(userId, postId);
     const nextTitle = dto.title?.trim() ?? post.title;
     await this.ensureNoDuplicateTitle(userId, nextTitle, post._id.toString());
@@ -204,12 +200,9 @@ export class RealEstateProfessionalBlogService {
   }
 
   private duplicateTitleException(): HttpException {
-    return new HttpException(
-      'A blog post with this title already exists',
-      HttpStatus.CONFLICT,
-      'BLOG_ALREADY_EXISTS',
-      { title: ['A blog post with this title already exists'] },
-    );
+    return new HttpException('A blog post with this title already exists', HttpStatus.CONFLICT, 'BLOG_ALREADY_EXISTS', {
+      title: ['A blog post with this title already exists'],
+    });
   }
 
   private toObjectId(value: string, invalidCode = 'VALIDATION_ERROR'): Types.ObjectId {
@@ -224,10 +217,7 @@ export class RealEstateProfessionalBlogService {
     return new Types.ObjectId(value);
   }
 
-  private toListData(
-    items: BlogPostListItemDto[],
-    pagination: BlogListDataDto['pagination'],
-  ): BlogListDataDto {
+  private toListData(items: BlogPostListItemDto[], pagination: BlogListDataDto['pagination']): BlogListDataDto {
     const preview = items[0];
     return {
       items,
@@ -251,8 +241,8 @@ export class RealEstateProfessionalBlogService {
       phone: post.phone,
       error: null,
       metadata: {
-        created_at: post.createdAt.toISOString(),
-        updated_at: post.updatedAt.toISOString(),
+        created_at: this.toIsoTimestamp(post.createdAt),
+        updated_at: this.toIsoTimestamp(post.updatedAt),
       },
     };
   }
@@ -268,11 +258,25 @@ export class RealEstateProfessionalBlogService {
       phone: post.phone,
       terms_accepted: post.terms_accepted,
       metadata: {
-        created_at: post.createdAt.toISOString(),
-        updated_at: post.updatedAt.toISOString(),
+        created_at: this.toIsoTimestamp(post.createdAt),
+        updated_at: this.toIsoTimestamp(post.updatedAt),
       },
       error: null,
     };
+  }
+
+  /** Supports Mongoose dates, ISO strings, and legacy rows missing timestamp fields. */
+  private toIsoTimestamp(value: unknown): string {
+    if (value instanceof Date && !Number.isNaN(value.getTime())) {
+      return value.toISOString();
+    }
+    if (typeof value === 'string' && value.trim().length > 0) {
+      const parsed = Date.parse(value);
+      if (!Number.isNaN(parsed)) {
+        return new Date(parsed).toISOString();
+      }
+    }
+    return new Date(0).toISOString();
   }
 
   private escapeRegex(value: string): string {

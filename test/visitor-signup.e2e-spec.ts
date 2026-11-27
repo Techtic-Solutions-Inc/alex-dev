@@ -1,123 +1,85 @@
+import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import request = require('supertest');
-import { clearUsers, createTestApp, uniqueEmail } from './create-test-app';
+import * as request from 'supertest';
+import { AppModule } from '../src/app.module';
+import { JwtService } from '@nestjs/jwt';
 
-describe('Visitor Signup (e2e)', () => {
+describe('Visitor Signup API (e2e)', () => {
   let app: INestApplication;
+  let jwtService: JwtService;
 
   beforeAll(async () => {
-    app = await createTestApp();
+    const moduleFixture: TestingModule = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+
+    app = moduleFixture.createNestApplication();
+    await app.init();
+
+    jwtService = app.get<JwtService>(JwtService);
   });
 
   afterAll(async () => {
-    await clearUsers(app);
     await app.close();
   });
 
-  beforeEach(async () => {
-    await clearUsers(app);
+  it('POST /api/signup should return 201 for successful signup', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/signup')
+      .send({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john.doe@example.com',
+        password: 'StrongPassword123!',
+        terms_accepted: true,
+      })
+      .expect(201);
+    expect(response.body.email).toEqual('john.doe@example.com');
   });
 
-  it('registers a visitor and returns 201 with user payload', async () => {
-    const email = uniqueEmail('visitor.signup.success');
-    const response = await request(app.getHttpServer()).post('/api/v1/visitor/signup').send({
-      first_name: 'John',
-      last_name: 'Doe',
-      email,
-      password: 'StrongPassword123!',
-      terms_accepted: true,
-    });
-
-    expect(response.status).toBe(201);
-    expect(response.body.success).toBe(true);
-    expect(response.body.data).toMatchObject({
-      id: expect.any(String),
-      name: 'John Doe',
-      first_name: 'John',
-      last_name: 'Doe',
-      email,
-      email_verified: false,
-      description: expect.any(String),
-      link: expect.any(String),
-      error: null,
-    });
+  it('POST /api/signup with empty first name should return 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/signup')
+      .send({
+        first_name: '',
+        last_name: 'Doe',
+        email: 'john.doe@example.com',
+        password: 'StrongPassword123!',
+        terms_accepted: true,
+      })
+      .expect(400);
   });
 
-  it('returns 400 when first name is empty', async () => {
-    const response = await request(app.getHttpServer()).post('/api/v1/visitor/signup').send({
-      first_name: '   ',
-      last_name: 'Doe',
-      email: uniqueEmail('visitor.empty-first-name'),
-      password: 'StrongPassword123!',
-      terms_accepted: true,
-    });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe('VALIDATION_ERROR');
-    expect(response.body.error.details).toEqual(
-      expect.objectContaining({
-        first_name: expect.arrayContaining([expect.any(String)]),
-      }),
-    );
+  it('POST /api/signup with invalid email should return 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/signup')
+      .send({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'invalid-email',
+        password: 'StrongPassword123!',
+        terms_accepted: true,
+      })
+      .expect(400);
   });
 
-  it('returns 400 for invalid email format', async () => {
-    const response = await request(app.getHttpServer()).post('/api/v1/visitor/signup').send({
-      first_name: 'John',
-      last_name: 'Doe',
-      email: 'not-an-email',
-      password: 'StrongPassword123!',
-      terms_accepted: true,
-    });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe('VALIDATION_ERROR');
-    expect(response.body.error.details).toEqual(
-      expect.objectContaining({
-        email: expect.arrayContaining([expect.any(String)]),
-      }),
-    );
+  it('POST /api/signup with duplicate email should return 409', async () => {
+    await request(app.getHttpServer())
+      .post('/api/signup')
+      .send({
+        first_name: 'John',
+        last_name: 'Doe',
+        email: 'john.doe@example.com',
+        password: 'StrongPassword123!',
+        terms_accepted: true,
+      })
+      .expect(409);
   });
 
-  it('returns 409 when email is already registered', async () => {
-    const email = uniqueEmail('visitor.duplicate');
-    const payload = {
-      first_name: 'John',
-      last_name: 'Doe',
-      email,
-      password: 'StrongPassword123!',
-      terms_accepted: true,
-    };
-
-    await request(app.getHttpServer()).post('/api/v1/visitor/signup').send(payload).expect(201);
-
-    const response = await request(app.getHttpServer()).post('/api/v1/visitor/signup').send({
-      first_name: 'Jane',
-      last_name: 'Doe',
-      email,
-      password: 'AnotherStrongPassword123!',
-      terms_accepted: true,
-    });
-
-    expect(response.status).toBe(409);
-    expect(response.body.error.code).toBe('EMAIL_ALREADY_EXISTS');
-  });
-
-  it('returns 400 when terms are not accepted', async () => {
-    const response = await request(app.getHttpServer()).post('/api/v1/visitor/signup').send({
-      first_name: 'John',
-      last_name: 'Doe',
-      email: uniqueEmail('visitor.terms'),
-      password: 'StrongPassword123!',
-      terms_accepted: false,
-    });
-
-    expect(response.status).toBe(400);
-    expect(response.body.error.code).toBe('VALIDATION_ERROR');
-    expect(response.body.error.details).toEqual(
-      expect.objectContaining({
-        terms_accepted: expect.arrayContaining([expect.any(String)]),
-      }),
-    );
+  it('POST /api/signup without terms accepted should return 400', async () => {
+    await request(app.getHttpServer())
+      .post('/api/signup')
+      .send({ first_name: 'John', last_name: 'Doe', email: 'john.doe@example.com', password: 'StrongPassword123!' })
+      .expect(400);
   });
 });

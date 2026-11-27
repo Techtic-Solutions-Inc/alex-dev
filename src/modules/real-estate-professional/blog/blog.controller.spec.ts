@@ -8,10 +8,7 @@ import { RealEstateProfessionalBlogService } from './blog.service';
 describe('RealEstateProfessionalBlogController', () => {
   let controller: RealEstateProfessionalBlogController;
   const service: jest.Mocked<
-    Pick<
-      RealEstateProfessionalBlogService,
-      'listPosts' | 'getPostById' | 'createPost' | 'updatePost' | 'deletePost'
-    >
+    Pick<RealEstateProfessionalBlogService, 'listPosts' | 'getPostById' | 'createPost' | 'updatePost' | 'deletePost'>
   > = {
     listPosts: jest.fn(),
     getPostById: jest.fn(),
@@ -98,11 +95,9 @@ describe('RealEstateProfessionalBlogController', () => {
   it('test_update_blog_success — updates a post', async () => {
     service.updatePost.mockResolvedValue({ ...detail, title: 'Updated title' });
 
-    const result = await controller.updatePost(
-      { user: { sub: 'user-id', tokenUse: 'access' } } as never,
-      'blog-id',
-      { title: 'Updated title' },
-    );
+    const result = await controller.updatePost({ user: { sub: 'user-id', tokenUse: 'access' } } as never, 'blog-id', {
+      title: 'Updated title',
+    });
 
     expect(service.updatePost).toHaveBeenCalledWith('user-id', 'blog-id', { title: 'Updated title' });
     expect(result.data.title).toBe('Updated title');

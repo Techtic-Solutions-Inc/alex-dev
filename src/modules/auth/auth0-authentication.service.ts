@@ -147,7 +147,11 @@ export class Auth0AuthenticationService {
       signal: AbortSignal.timeout(5_000),
     });
 
-    const payload = (await response.json().catch(() => ({}))) as { code?: string; description?: string; message?: string };
+    const payload = (await response.json().catch(() => ({}))) as {
+      code?: string;
+      description?: string;
+      message?: string;
+    };
     if (response.ok) {
       return;
     }
@@ -160,7 +164,11 @@ export class Auth0AuthenticationService {
     }
 
     if (response.status >= 400 && response.status < 500) {
-      throw new HttpException('We could not complete registration. Please review your details.', 400, 'REGISTRATION_FAILED');
+      throw new HttpException(
+        'We could not complete registration. Please review your details.',
+        400,
+        'REGISTRATION_FAILED',
+      );
     }
 
     this.logger.warn(`Auth0 signup request failed with status ${response.status}`);

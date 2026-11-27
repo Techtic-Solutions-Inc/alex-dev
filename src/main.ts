@@ -113,4 +113,10 @@ async function bootstrap(): Promise<void> {
   await app.listen(port);
 }
 
-void bootstrap();
+void bootstrap().catch((error: unknown) => {
+  logger.error('Application bootstrap failed', {
+    message: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  });
+  process.exit(1);
+});
