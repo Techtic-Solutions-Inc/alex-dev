@@ -34,8 +34,7 @@ export class ContentLibraryDedicatedSearchQueryDto {
   })
   @Transform(trimmedString)
   @IsOptional()
-  @Matches(/^
-  \+?[0-9][0-9\s\-().]{6,24}$/, { message: 'phone must be a valid phone number' })
+  @Matches(/^\+?[0-9][0-9\s\-().]{6,24}$/, { message: 'phone must be a valid phone number' })
   phone?: string;
 
   @ApiPropertyOptional({
