@@ -4,6 +4,10 @@ import { JwtAuthGuard } from '../../common/guards/jwt.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { AuthModule } from '../auth/auth.module';
 import { User, UserSchema } from '../auth/entities/user.schema';
+import { RealEstateProfessionalBlogController } from './blog/blog.controller';
+import { BlogDetailAccessGuard } from './blog/blog-detail.guard';
+import { RealEstateProfessionalBlogService } from './blog/blog.service';
+import { RealEstateBlogPost, RealEstateBlogPostSchema } from './blog/entities/blog-post.schema';
 import { RealEstateProfessionalContentController } from './content/content.controller';
 import { RealEstateProfessionalContentService } from './content/content.service';
 import { RealEstateContentItem, RealEstateContentItemSchema } from './content/entities/content-item.schema';
@@ -14,9 +18,16 @@ import { RealEstateContentItem, RealEstateContentItemSchema } from './content/en
     MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: RealEstateContentItem.name, schema: RealEstateContentItemSchema },
+      { name: RealEstateBlogPost.name, schema: RealEstateBlogPostSchema },
     ]),
   ],
-  controllers: [RealEstateProfessionalContentController],
-  providers: [RealEstateProfessionalContentService, JwtAuthGuard, RolesGuard],
+  controllers: [RealEstateProfessionalContentController, RealEstateProfessionalBlogController],
+  providers: [
+    RealEstateProfessionalContentService,
+    RealEstateProfessionalBlogService,
+    JwtAuthGuard,
+    RolesGuard,
+    BlogDetailAccessGuard,
+  ],
 })
 export class RealEstateProfessionalModule {}

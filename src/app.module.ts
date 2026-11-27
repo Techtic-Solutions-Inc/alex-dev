@@ -1,5 +1,6 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { JwtModule } from '@nestjs/jwt';
 import { ApmModule } from './common/apm/apm.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { RateLimiterMiddleware } from './common/middleware/rate-limiter.middleware';
@@ -13,6 +14,7 @@ import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { RealEstateProfessionalModule } from './modules/real-estate-professional/real-estate-professional.module';
+import { VisitorModule } from './modules/visitor/visitor.module';
 
 @Module({
   imports: [
@@ -32,6 +34,13 @@ import { RealEstateProfessionalModule } from './modules/real-estate-professional
         return env;
       },
     }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.getOrThrow<string>('JWT_SECRET'),
+      }),
+    }),
     ApmModule,
     DatabaseModule,
     AuthModule,
@@ -41,7 +50,9 @@ import { RealEstateProfessionalModule } from './modules/real-estate-professional
     HealthModule,
     ProfileModule,
     RealEstateProfessionalModule,
+    VisitorModule,
   ],
+  providers: [RateLimiterMiddleware],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
