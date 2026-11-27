@@ -21,6 +21,6 @@ import { User, UserSchema } from './entities/user.schema';
   ],
   controllers: [AuthController],
   providers: [AuthService, Auth0AuthenticationService, EmailVerificationService],
-  exports: [JwtModule, AuthService],
+  exports: [JwtModule, AuthService, Auth0AuthenticationService],
 })
 export class AuthModule {}

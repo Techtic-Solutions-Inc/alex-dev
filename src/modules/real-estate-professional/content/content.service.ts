@@ -35,17 +35,14 @@ export class RealEstateProfessionalContentService {
 
     const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
     const items = records.map((item) => this.toResponse(item));
-    return this.toListData(
-      items,
-      {
-        page,
-        limit,
-        total,
-        total_pages: totalPages,
-        has_next: page < totalPages,
-        has_previous: page > 1 && total > 0,
-      },
-    );
+    return this.toListData(items, {
+      page,
+      limit,
+      total,
+      total_pages: totalPages,
+      has_next: page < totalPages,
+      has_previous: page > 1 && total > 0,
+    });
   }
 
   async createItem(userId: string, dto: CreateRealEstateContentDto): Promise<RealEstateContentItemResponseDto> {
@@ -176,12 +173,14 @@ export class RealEstateProfessionalContentService {
     return item;
   }
 
-  private async requirePersistedItem(
-    itemId: Types.ObjectId,
-  ): Promise<RealEstateContentItemDocument> {
+  private async requirePersistedItem(itemId: Types.ObjectId): Promise<RealEstateContentItemDocument> {
     const item = await this.contentModel.findById(itemId).exec();
     if (!item) {
-      throw new HttpException('Database connection is unavailable', HttpStatus.SERVICE_UNAVAILABLE, 'DATABASE_UNAVAILABLE');
+      throw new HttpException(
+        'Database connection is unavailable',
+        HttpStatus.SERVICE_UNAVAILABLE,
+        'DATABASE_UNAVAILABLE',
+      );
     }
     return item;
   }

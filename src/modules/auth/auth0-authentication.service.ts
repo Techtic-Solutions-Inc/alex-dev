@@ -107,4 +107,75 @@ export class Auth0AuthenticationService {
       'AUTHENTICATION_UNAVAILABLE',
     );
   }
+
+  /**
+   * Creates a database-connection user through Auth0's public signup endpoint.
+   * No-op when Auth0 is not configured (local credential store handles registration).
+   */
+  async registerUser(params: {
+    email: string;
+    password: string;
+    first_name: string;
+    last_name: string;
+  }): Promise<void> {
+    if (!this.isConfigured()) {
+      return;
+    }
+
+    const domain = this.configService
+      .getOrThrow<string>('AUTH0_DOMAIN')
+      .replace(/^https?:\/\//, '')
+      .replace(/\/+$/, '');
+    const endpoint = `https://${domain}/dbconnections/signup`;
+
+    const body = {
+      client_id: this.configService.getOrThrow<string>('AUTH0_CLIENT_ID'),
+      email: params.email,
+      password: params.password,
+      connection: this.configService.getOrThrow<string>('AUTH0_CONNECTION'),
+      name: `${params.first_name} ${params.last_name}`.trim(),
+      user_metadata: {
+        first_name: params.first_name,
+        last_name: params.last_name,
+      },
+    };
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5_000),
+    });
+
+    const payload = (await response.json().catch(() => ({}))) as {
+      code?: string;
+      description?: string;
+      message?: string;
+    };
+    if (response.ok) {
+      return;
+    }
+
+    const description = (payload.description ?? payload.message ?? '').toLowerCase();
+    if (response.status === 400 && (description.includes('exists') || payload.code === 'user_exists')) {
+      throw new HttpException('An account with this email address already exists', 409, 'EMAIL_ALREADY_EXISTS', {
+        email: ['An account with this email address already exists'],
+      });
+    }
+
+    if (response.status >= 400 && response.status < 500) {
+      throw new HttpException(
+        'We could not complete registration. Please review your details.',
+        400,
+        'REGISTRATION_FAILED',
+      );
+    }
+
+    this.logger.warn(`Auth0 signup request failed with status ${response.status}`);
+    throw new HttpException(
+      'Registration is temporarily unavailable. Please try again later.',
+      503,
+      'AUTHENTICATION_UNAVAILABLE',
+    );
+  }
 }
