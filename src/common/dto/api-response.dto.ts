@@ -14,7 +14,7 @@ export class ApiErrorDto {
 
 export class ApiErrorResponseDto {
   @ApiProperty({ example: false })
-  success!: false;
+  success = false;
 
   @ApiProperty({ description: 'Safe message suitable for display in the UI', example: 'Validation failed' })
   message!: string;
@@ -24,7 +24,7 @@ export class ApiErrorResponseDto {
 
   @ApiProperty({
     description: 'Request path that produced the error.',
-    example: '/api/auth/signup',
+    example: '/api/v1/auth/signup',
   })
   path!: string;
 

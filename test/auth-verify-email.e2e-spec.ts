@@ -22,7 +22,7 @@ describe('Auth Verify Email (e2e)', () => {
 
   async function signupUser(email: string): Promise<void> {
     await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'John',
         last_name: 'Doe',
@@ -40,7 +40,7 @@ describe('Auth Verify Email (e2e)', () => {
     const token = verificationTokens.get(email);
     expect(token).toBeDefined();
 
-    const response = await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token });
+    const response = await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -60,7 +60,7 @@ describe('Auth Verify Email (e2e)', () => {
   });
 
   it('returns validation error when the token query parameter is missing', async () => {
-    const response = await request(app.getHttpServer()).get('/api/auth/verify-email');
+    const response = await request(app.getHttpServer()).get('/api/v1/auth/verify-email');
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
@@ -71,7 +71,7 @@ describe('Auth Verify Email (e2e)', () => {
 
   it('returns validation error for a malformed token', async () => {
     const response = await request(app.getHttpServer())
-      .get('/api/auth/verify-email')
+      .get('/api/v1/auth/verify-email')
       .query({ token: 'not-a-valid-token' });
 
     expect(response.status).toBe(400);
@@ -86,7 +86,7 @@ describe('Auth Verify Email (e2e)', () => {
 
   it('returns bad request for an unknown verification token', async () => {
     const response = await request(app.getHttpServer())
-      .get('/api/auth/verify-email')
+      .get('/api/v1/auth/verify-email')
       .query({ token: 'a'.repeat(64) });
 
     expect(response.status).toBe(400);
@@ -105,9 +105,9 @@ describe('Auth Verify Email (e2e)', () => {
     const token = verificationTokens.get(email);
     expect(token).toBeDefined();
 
-    await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token }).expect(200);
+    await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token }).expect(200);
 
-    const response = await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token });
+    const response = await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token });
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);
@@ -130,7 +130,7 @@ describe('Auth Verify Email (e2e)', () => {
       .collection('users')
       .updateOne({ email }, { $set: { verification_token_expires_at: new Date(Date.now() - 60_000) } });
 
-    const response = await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token });
+    const response = await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token });
 
     expect(response.status).toBe(400);
     expect(response.body.success).toBe(false);

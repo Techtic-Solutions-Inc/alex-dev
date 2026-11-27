@@ -13,8 +13,8 @@ describe('Health endpoint (e2e)', () => {
     await app.close();
   });
 
-  it('GET /health returns an UP status and frontend session bootstrap fields', async () => {
-    const response = await request(app.getHttpServer()).get('/health').expect(200);
+  it('GET /api/v1/health returns an UP status and frontend session bootstrap fields', async () => {
+    const response = await request(app.getHttpServer()).get('/api/v1/health').expect(200);
 
     expect(response.body.success).toBe(true);
     expect(response.body.message).toBe('API is healthy');

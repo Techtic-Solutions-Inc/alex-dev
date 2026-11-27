@@ -34,7 +34,7 @@ describe('Content Calendar (e2e)', () => {
 
   it('creates a content entry with valid data', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validEntry);
 
@@ -59,7 +59,7 @@ describe('Content Calendar (e2e)', () => {
 
   it('returns 400 when required fields are missing on create', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         content: validEntry.content,
@@ -81,13 +81,13 @@ describe('Content Calendar (e2e)', () => {
 
   it('returns 409 when creating a duplicate title on the same date', async () => {
     await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validEntry)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validEntry);
 
@@ -98,13 +98,13 @@ describe('Content Calendar (e2e)', () => {
 
   it('updates an existing content entry with valid data', async () => {
     const created = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validEntry)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .put(`/api/content-calendar/${created.body.data.id}`)
+      .put(`/api/v1/content-calendar/${created.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         title: 'Market update - Austin Q2 revised',
@@ -124,7 +124,7 @@ describe('Content Calendar (e2e)', () => {
 
   it('returns 404 when updating a non-existent content entry', async () => {
     const response = await request(app.getHttpServer())
-      .put('/api/content-calendar/66df0b7814b3e891e4ebcd21')
+      .put('/api/v1/content-calendar/66df0b7814b3e891e4ebcd21')
       .set('Authorization', `Bearer ${authToken}`)
       .send({ title: 'Missing entry update' });
 
@@ -135,13 +135,13 @@ describe('Content Calendar (e2e)', () => {
 
   it('deletes a content entry with 204 and no body', async () => {
     const created = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validEntry)
       .expect(201);
 
     const response = await request(app.getHttpServer())
-      .delete(`/api/content-calendar/${created.body.data.id}`)
+      .delete(`/api/v1/content-calendar/${created.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(204);
@@ -153,7 +153,7 @@ describe('Content Calendar (e2e)', () => {
     const password = 'StrongPassword123!';
 
     await request(app.getHttpServer())
-      .post('/api/auth/signup')
+      .post('/api/v1/auth/signup')
       .send({
         first_name: 'Jane',
         last_name: 'Doe',
@@ -166,10 +166,10 @@ describe('Content Calendar (e2e)', () => {
     const verificationToken = verificationTokens.get(email);
     expect(verificationToken).toBeDefined();
 
-    await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+    await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
     const loginResponse = await request(app.getHttpServer())
-      .post('/api/auth/login')
+      .post('/api/v1/auth/login')
       .send({ email, password })
       .expect(201);
 
@@ -178,7 +178,7 @@ describe('Content Calendar (e2e)', () => {
     await connection.collection('users').updateOne({ email }, { $set: { is_active: false } });
 
     const response = await request(app.getHttpServer())
-      .get('/api/content-calendar')
+      .get('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${inactiveToken}`);
 
     expect(response.status).toBe(404);
@@ -188,13 +188,13 @@ describe('Content Calendar (e2e)', () => {
 
   it('returns only active content entries when listing the calendar', async () => {
     const first = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send(validEntry)
       .expect(201);
 
     const second = await request(app.getHttpServer())
-      .post('/api/content-calendar')
+      .post('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         ...validEntry,
@@ -204,12 +204,12 @@ describe('Content Calendar (e2e)', () => {
       .expect(201);
 
     await request(app.getHttpServer())
-      .delete(`/api/content-calendar/${first.body.data.id}`)
+      .delete(`/api/v1/content-calendar/${first.body.data.id}`)
       .set('Authorization', `Bearer ${authToken}`)
       .expect(204);
 
     const response = await request(app.getHttpServer())
-      .get('/api/content-calendar')
+      .get('/api/v1/content-calendar')
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
 
@@ -225,7 +225,7 @@ async function createAuthenticatedToken(app: INestApplication): Promise<string> 
   const password = 'StrongPassword123!';
 
   await request(app.getHttpServer())
-    .post('/api/auth/signup')
+    .post('/api/v1/auth/signup')
     .send({
       first_name: 'Jane',
       last_name: 'Doe',
@@ -238,10 +238,10 @@ async function createAuthenticatedToken(app: INestApplication): Promise<string> 
   const verificationToken = verificationTokens.get(email);
   expect(verificationToken).toBeDefined();
 
-  await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+  await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
   const loginResponse = await request(app.getHttpServer())
-    .post('/api/auth/login')
+    .post('/api/v1/auth/login')
     .send({ email, password })
     .expect(201);
 

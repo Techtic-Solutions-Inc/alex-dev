@@ -5,6 +5,7 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Reflector } from '@nestjs/core';
 import { ValidationError } from 'class-validator';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ResponseEnvelopeInterceptor } from './common/interceptors/response-envelope.interceptor';
 
@@ -26,7 +27,7 @@ async function bootstrap(): Promise<void> {
   const corsOrigin = configService.get<string>('CORS_ORIGIN')?.trim();
   const allowAllOrigins = !corsOrigin || corsOrigin === '*';
 
-  app.setGlobalPrefix('api', { exclude: ['health'] });
+  app.setGlobalPrefix('api/v1');
   app.enableCors({
     origin: allowAllOrigins
       ? true
@@ -46,7 +47,7 @@ async function bootstrap(): Promise<void> {
         }),
     }),
   );
-  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalFilters(new GlobalExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new ResponseEnvelopeInterceptor(app.get(Reflector)));
 
   const swaggerConfig = new DocumentBuilder()

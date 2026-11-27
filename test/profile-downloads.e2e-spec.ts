@@ -58,7 +58,7 @@ describe('Profile Downloads API (e2e)', () => {
     ]);
 
     const response = await request(app.getHttpServer())
-      .get('/api/profile/downloads?page=1&limit=2')
+      .get('/api/v1/profile/downloads?page=1&limit=2')
       .set('Authorization', `Bearer ${authToken}`);
 
     expect(response.status).toBe(200);
@@ -122,7 +122,7 @@ describe('Profile Downloads API (e2e)', () => {
   });
 
   it('returns 401 for download history requests without authentication', async () => {
-    const response = await request(app.getHttpServer()).get('/api/profile/downloads');
+    const response = await request(app.getHttpServer()).get('/api/v1/profile/downloads');
 
     expect(response.status).toBe(401);
     expect(response.body.error.code).toBe('AUTHENTICATION_REQUIRED');
@@ -145,7 +145,7 @@ describe('Profile Downloads API (e2e)', () => {
     expect(before?.last_downloaded_at.toISOString()).toBe('2026-06-04T09:00:00.000Z');
 
     const response = await request(app.getHttpServer())
-      .post('/api/profile/downloads/re-download')
+      .post('/api/v1/profile/downloads/re-download')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         download_id: downloadId,
@@ -186,7 +186,7 @@ describe('Profile Downloads API (e2e)', () => {
 
   it('returns 400 when the re-download payload is invalid', async () => {
     const response = await request(app.getHttpServer())
-      .post('/api/profile/downloads/re-download')
+      .post('/api/v1/profile/downloads/re-download')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         download_id: 'not-an-object-id',
@@ -218,7 +218,7 @@ describe('Profile Downloads API (e2e)', () => {
     ]);
 
     const response = await request(app.getHttpServer())
-      .post('/api/profile/downloads/re-download')
+      .post('/api/v1/profile/downloads/re-download')
       .set('Authorization', `Bearer ${authToken}`)
       .send({
         download_id: otherDownloadId,
@@ -239,7 +239,7 @@ async function createAuthenticatedUser(
   const password = 'StrongPassword123!';
 
   await request(app.getHttpServer())
-    .post('/api/auth/signup')
+    .post('/api/v1/auth/signup')
     .send({
       first_name: 'Jane',
       last_name: 'Doe',
@@ -253,10 +253,10 @@ async function createAuthenticatedUser(
   const verificationToken = verificationTokens.get(email);
   expect(verificationToken).toBeDefined();
 
-  await request(app.getHttpServer()).get('/api/auth/verify-email').query({ token: verificationToken }).expect(200);
+  await request(app.getHttpServer()).get('/api/v1/auth/verify-email').query({ token: verificationToken }).expect(200);
 
   const loginResponse = await request(app.getHttpServer())
-    .post('/api/auth/login')
+    .post('/api/v1/auth/login')
     .send({ email, password })
     .expect(201);
 
